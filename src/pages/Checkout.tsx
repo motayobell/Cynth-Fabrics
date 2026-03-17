@@ -58,7 +58,7 @@ export default function Checkout() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.MouseEvent) => {
+  const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!product) return;
 
@@ -71,29 +71,34 @@ export default function Checkout() {
       ? `${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}` 
       : product.priceUSD;
 
-    addOrder({
-      customerName: formData.fullName,
-      contact: {
-        email: formData.email,
-        phone: `${selectedCountry.code} ${formData.phone}`
-      },
-      location: {
-        country: selectedCountry.name,
-        code: selectedCountry.code === '+234' ? 'NG' : 
-              selectedCountry.code === '+44' ? 'UK' : 
-              selectedCountry.code === '+1' ? 'US' : 'INT'
-      },
-      product: {
-        name: product.name,
-        image: image || product.image,
-        price: displayPrice,
-        quantity: orderQuantity
-      },
-      size: size || 'Standard',
-      customizations: formData.customizations
-    });
+    try {
+      await addOrder({
+        customerName: formData.fullName,
+        contact: {
+          email: formData.email,
+          phone: `${selectedCountry.code} ${formData.phone}`
+        },
+        location: {
+          country: selectedCountry.name,
+          code: selectedCountry.code === '+234' ? 'NG' : 
+                selectedCountry.code === '+44' ? 'UK' : 
+                selectedCountry.code === '+1' ? 'US' : 'INT'
+        },
+        product: {
+          name: product.name,
+          image: image || product.image,
+          price: displayPrice,
+          quantity: orderQuantity
+        },
+        size: size || 'Standard',
+        customizations: formData.customizations
+      });
 
-    navigate('/order-confirmation');
+      navigate('/order-confirmation');
+    } catch (error) {
+      console.error("Failed to submit order:", error);
+      alert('Failed to submit order. Please try again.');
+    }
   };
 
   if (!product) {

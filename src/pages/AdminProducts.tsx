@@ -15,6 +15,8 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import { PRODUCT_CATEGORIES } from '../constants';
 import { useProducts, Product } from '../context/ProductContext';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 const compressImage = (file: File, callback: (base64: string) => void) => {
   const reader = new FileReader();
@@ -63,6 +65,7 @@ const AdminProducts = () => {
   const [newCategory, setNewCategory] = useState('');
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -98,27 +101,50 @@ const AdminProducts = () => {
     }
   };
 
+  const uploadToFirebase = async (base64String: string): Promise<string> => {
+    const storageRef = ref(storage, `products/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`);
+    await uploadString(storageRef, base64String, 'data_url');
+    return await getDownloadURL(storageRef);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach(file => {
-        if (file.type.startsWith('image/')) {
-          compressImage(file, (base64) => {
-            setProductForm(prev => ({ 
-              ...prev, 
-              images: [...prev.images, base64] 
-            }));
-          });
-        } else {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setProductForm(prev => ({ 
-              ...prev, 
-              images: [...prev.images, reader.result as string] 
-            }));
-          };
-          reader.readAsDataURL(file);
-        }
+      setIsUploading(true);
+      const uploadPromises = Array.from(files).map(file => {
+        return new Promise<string>((resolve) => {
+          if (file.type.startsWith('image/')) {
+            compressImage(file, async (base64) => {
+              try {
+                const url = await uploadToFirebase(base64);
+                resolve(url);
+              } catch (error) {
+                console.error("Upload failed", error);
+                resolve(base64); // Fallback to base64 if upload fails
+              }
+            });
+          } else {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+              try {
+                const url = await uploadToFirebase(reader.result as string);
+                resolve(url);
+              } catch (error) {
+                console.error("Upload failed", error);
+                resolve(reader.result as string);
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      });
+
+      Promise.all(uploadPromises).then(urls => {
+        setProductForm(prev => ({ 
+          ...prev, 
+          images: [...prev.images, ...urls] 
+        }));
+        setIsUploading(false);
       });
     }
   };
@@ -130,7 +156,7 @@ const AdminProducts = () => {
     }));
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!productForm.name.trim()) {
@@ -169,10 +195,10 @@ const AdminProducts = () => {
     try {
       setSaveError(null);
       if (editingId) {
-        updateProduct(editingId, productData);
+        await updateProduct(editingId, productData);
         setEditingId(null);
       } else {
-        addProduct(productData);
+        await addProduct(productData);
       }
       
       setIsModalOpen(false);
@@ -188,7 +214,7 @@ const AdminProducts = () => {
       });
     } catch (error) {
       console.error('Error saving product:', error);
-      setSaveError('Failed to save product. The images might be too large. Please try using smaller images or fewer images.');
+      setSaveError('Failed to save product. Please try again.');
     }
   };
 
@@ -221,11 +247,15 @@ const AdminProducts = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteProduct = (id: string | number, e?: React.MouseEvent) => {
+  const handleDeleteProduct = async (id: string | number, e?: React.MouseEvent) => {
     e?.stopPropagation();
     // In a real app, use a custom modal. For this demo, we'll just delete it directly
     // since window.confirm is blocked in the iframe.
-    deleteProduct(id);
+    try {
+      await deleteProduct(id);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -608,9 +638,10 @@ const AdminProducts = () => {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-[#f20c92] hover:bg-[#d90a82] text-white rounded-xl font-medium shadow-md transition-all w-full sm:w-auto"
+                  disabled={isUploading}
+                  className={`flex-1 py-3 bg-[#f20c92] text-white rounded-xl font-medium shadow-md transition-all w-full sm:w-auto ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#d90a82]'}`}
                 >
-                  {editingId ? 'Save Changes' : 'Add Product'}
+                  {isUploading ? 'Uploading...' : (editingId ? 'Save Changes' : 'Add Product')}
                 </button>
               </div>
             </form>

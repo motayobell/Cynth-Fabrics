@@ -83,26 +83,38 @@ const AdminOrders = () => {
     setSelectedOrder(null);
   };
 
-  const handleShippingFeeBlur = () => {
+  const handleShippingFeeBlur = async () => {
     if (selectedOrder) {
-      updateOrderShipping(selectedOrder.id, shippingFee, shippingCurrency);
-      setSelectedOrder({ ...selectedOrder, shippingFee, shippingCurrency });
+      try {
+        await updateOrderShipping(selectedOrder.id, shippingFee, shippingCurrency);
+        setSelectedOrder({ ...selectedOrder, shippingFee, shippingCurrency });
+      } catch (error) {
+        console.error("Failed to update shipping fee:", error);
+      }
     }
   };
 
-  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCurrency = e.target.value;
     setShippingCurrency(newCurrency);
     if (selectedOrder) {
-      updateOrderShipping(selectedOrder.id, shippingFee, newCurrency);
-      setSelectedOrder({ ...selectedOrder, shippingCurrency: newCurrency });
+      try {
+        await updateOrderShipping(selectedOrder.id, shippingFee, newCurrency);
+        setSelectedOrder({ ...selectedOrder, shippingCurrency: newCurrency });
+      } catch (error) {
+        console.error("Failed to update currency:", error);
+      }
     }
   };
 
-  const handleStatusUpdate = (newStatus: Order['status']) => {
+  const handleStatusUpdate = async (newStatus: Order['status']) => {
     if (selectedOrder) {
-      updateOrderStatus(selectedOrder.id, newStatus);
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+      try {
+        await updateOrderStatus(selectedOrder.id, newStatus);
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      } catch (error) {
+        console.error("Failed to update status:", error);
+      }
     }
   };
 
@@ -241,7 +253,13 @@ const AdminOrders = () => {
                           <Eye size={14} /> View
                         </button>
                         <button 
-                          onClick={() => deleteOrder(enquiry.id)}
+                          onClick={async () => {
+                            try {
+                              await deleteOrder(enquiry.id);
+                            } catch (error) {
+                              console.error("Failed to delete order:", error);
+                            }
+                          }}
                           className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-all"
                         >
                           <Trash2 size={14} /> Delete

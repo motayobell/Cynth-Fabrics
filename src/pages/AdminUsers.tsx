@@ -40,6 +40,9 @@ const initialAdmins: AdminUser[] = [
   }
 ];
 
+import { db } from '../firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
+
 const AdminUsers = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,19 +50,57 @@ const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const storedAdmins = localStorage.getItem('adminUsers');
-    if (storedAdmins) {
-      setAdmins(JSON.parse(storedAdmins));
-    } else {
-      setAdmins(initialAdmins);
-      localStorage.setItem('adminUsers', JSON.stringify(initialAdmins));
-    }
+    const q = query(collection(db, 'users'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial data if empty
+        seedInitialData();
+      } else {
+        const usersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as AdminUser[];
+        setAdmins(usersData);
+      }
+    }, (error) => {
+      // Fallback to local data if offline or permission denied
+      const storedAdmins = localStorage.getItem('adminUsers');
+      if (storedAdmins) {
+        setAdmins(JSON.parse(storedAdmins));
+      } else {
+        setAdmins(initialAdmins);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const handleAddAdmin = (e: React.FormEvent) => {
+  const seedInitialData = async () => {
+    try {
+      for (const admin of initialAdmins) {
+        const docRef = doc(collection(db, 'users'), String(admin.id));
+        await setDoc(docRef, {
+          ...admin,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      // If seeding fails (e.g., due to permissions), fallback to local data
+      const storedAdmins = localStorage.getItem('adminUsers');
+      if (storedAdmins) {
+        setAdmins(JSON.parse(storedAdmins));
+      } else {
+        setAdmins(initialAdmins);
+      }
+    }
+  };
+
+  const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const adminId = Date.now().toString();
     const admin: AdminUser = {
-      id: Date.now().toString(),
+      id: adminId,
       name: newAdmin.name,
       email: newAdmin.email,
       role: newAdmin.role as any,
@@ -67,18 +108,26 @@ const AdminUsers = () => {
       lastLogin: 'Never'
     };
     
-    const updatedAdmins = [...admins, admin];
-    setAdmins(updatedAdmins);
-    localStorage.setItem('adminUsers', JSON.stringify(updatedAdmins));
-    setIsModalOpen(false);
-    setNewAdmin({ name: '', email: '', role: 'Editor' });
+    try {
+      const docRef = doc(collection(db, 'users'), adminId);
+      await setDoc(docRef, {
+        ...admin,
+        createdAt: serverTimestamp()
+      });
+      setIsModalOpen(false);
+      setNewAdmin({ name: '', email: '', role: 'Editor' });
+    } catch (error) {
+      console.error("Error adding admin:", error);
+    }
   };
 
-  const handleDeleteAdmin = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this admin?')) {
-      const updatedAdmins = admins.filter(admin => admin.id !== id);
-      setAdmins(updatedAdmins);
-      localStorage.setItem('adminUsers', JSON.stringify(updatedAdmins));
+  const handleDeleteAdmin = async (id: string) => {
+    // In a real app, use a custom modal. For this demo, we'll just delete it directly
+    // since window.confirm is blocked in the iframe.
+    try {
+      await deleteDoc(doc(db, 'users', id));
+    } catch (error) {
+      console.error("Error deleting admin:", error);
     }
   };
 

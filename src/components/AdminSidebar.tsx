@@ -11,6 +11,8 @@ import {
   FileText,
   LogOut
 } from 'lucide-react';
+import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 
 const AdminSidebar = () => {
   const location = useLocation();
@@ -28,7 +30,12 @@ const AdminSidebar = () => {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+    }
     localStorage.removeItem('currentUser');
     navigate('/admin/login');
   };

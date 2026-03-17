@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
+import { db } from '../firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export interface Product {
   id: string | number;
@@ -16,13 +18,14 @@ export interface Product {
   priceUSD?: string;
   tag?: string | null;
   tagColor?: string;
+  createdAt?: any;
 }
 
 interface ProductContextType {
   products: Product[];
-  addProduct: (product: Product) => void;
-  updateProduct: (id: string | number, product: Product) => void;
-  deleteProduct: (id: string | number) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (id: string | number, product: Product) => Promise<void>;
+  deleteProduct: (id: string | number) => Promise<void>;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -31,42 +34,79 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    const storedProducts = localStorage.getItem('products');
-    if (storedProducts) {
-      setProducts(JSON.parse(storedProducts));
-    } else {
-      // Seed with initial data
-      // We need to normalize the initial data to match our extended interface if needed
-      // But for now, the interface covers both structures
-      setProducts(INITIAL_PRODUCTS);
-      localStorage.setItem('products', JSON.stringify(INITIAL_PRODUCTS));
-    }
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial data if empty
+        seedInitialData();
+      } else {
+        const productsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Product[];
+        setProducts(productsData);
+      }
+    }, (error) => {
+      // Fallback to local data if offline or permission denied
+      if (products.length === 0) {
+        setProducts(INITIAL_PRODUCTS);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const saveProducts = (newProducts: Product[]) => {
-    setProducts(newProducts);
+  const seedInitialData = async () => {
     try {
-      localStorage.setItem('products', JSON.stringify(newProducts));
+      for (const product of INITIAL_PRODUCTS) {
+        const docRef = doc(collection(db, 'products'), String(product.id));
+        await setDoc(docRef, {
+          ...product,
+          createdAt: serverTimestamp()
+        });
+      }
     } catch (error) {
-      console.error('Failed to save products to localStorage:', error);
+      // If seeding fails (e.g., due to permissions), fallback to local data
+      if (products.length === 0) {
+        setProducts(INITIAL_PRODUCTS);
+      }
+    }
+  };
+
+  const addProduct = async (product: Product) => {
+    try {
+      const docRef = doc(collection(db, 'products'), String(product.id));
+      await setDoc(docRef, {
+        ...product,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error adding product:", error);
       throw error;
     }
   };
 
-  const addProduct = (product: Product) => {
-    // Add to the TOP of the list (LIFO)
-    const newProducts = [product, ...products];
-    saveProducts(newProducts);
+  const updateProduct = async (id: string | number, updatedProduct: Product) => {
+    try {
+      const docRef = doc(db, 'products', String(id));
+      await updateDoc(docRef, {
+        ...updatedProduct
+      });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      throw error;
+    }
   };
 
-  const updateProduct = (id: string | number, updatedProduct: Product) => {
-    const newProducts = products.map(p => String(p.id) === String(id) ? updatedProduct : p);
-    saveProducts(newProducts);
-  };
-
-  const deleteProduct = (id: string | number) => {
-    const newProducts = products.filter(p => String(p.id) !== String(id));
-    saveProducts(newProducts);
+  const deleteProduct = async (id: string | number) => {
+    try {
+      const docRef = doc(db, 'products', String(id));
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      throw error;
+    }
   };
 
   return (

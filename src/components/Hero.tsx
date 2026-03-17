@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HeroCarousel, MediaItem } from './HeroCarousel';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const HERO_ITEMS: MediaItem[] = [
   {
@@ -24,8 +26,8 @@ const HERO_ITEMS: MediaItem[] = [
 ];
 
 export function Hero() {
-  const [items, setItems] = React.useState<MediaItem[]>(HERO_ITEMS);
-  const [content, setContent] = React.useState({
+  const [items, setItems] = useState<MediaItem[]>(HERO_ITEMS);
+  const [content, setContent] = useState({
     smallHeading: 'New Season 2024',
     heading: 'Wear Your Roots With Pride',
     subheading: 'High-fashion Nigerian native wear designed for the global citizen.\nAuthenticity woven into every fiber, delivered worldwide.',
@@ -35,26 +37,38 @@ export function Hero() {
     button2Link: '/lookbook'
   });
 
-  React.useEffect(() => {
-    try {
-      const savedContent = localStorage.getItem('siteContent');
-      if (savedContent) {
-        const parsed = JSON.parse(savedContent);
-        const homePage = parsed.find((p: any) => p.id === 'home');
-        const heroSection = homePage?.sections.find((s: any) => s.id === 'home-hero');
-        if (heroSection?.content) {
-          if (heroSection.content.items) {
-            setItems(heroSection.content.items);
-          }
-          setContent(prev => ({
-            ...prev,
-            ...heroSection.content
-          }));
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const docRef = doc(db, 'content', 'siteContent');
+        const docSnap = await getDoc(docRef);
+        
+        let parsed = null;
+        if (docSnap.exists()) {
+          parsed = docSnap.data().pages;
+        } else {
+          const savedContent = localStorage.getItem('siteContent');
+          if (savedContent) parsed = JSON.parse(savedContent);
         }
+
+        if (parsed) {
+          const homePage = parsed.find((p: any) => p.id === 'home');
+          const heroSection = homePage?.sections.find((s: any) => s.id === 'home-hero');
+          if (heroSection?.content) {
+            if (heroSection.content.items) {
+              setItems(heroSection.content.items);
+            }
+            setContent(prev => ({
+              ...prev,
+              ...heroSection.content
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load content', e);
       }
-    } catch (e) {
-      console.error('Failed to load content', e);
-    }
+    };
+    fetchContent();
   }, []);
 
   return (

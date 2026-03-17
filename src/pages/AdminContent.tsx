@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
 import { 
   Save, 
@@ -15,19 +15,31 @@ import {
   SplitSquareHorizontal,
   BarChart3
 } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 type SectionType = 'hero' | 'features' | 'text' | 'gallery' | 'cta' | 'split' | 'quote' | 'stats';
 
 const uploadFile = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append('media', file);
-  const res = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        // Progress could be tracked here
+      },
+      (error) => {
+        console.error('Upload error:', error);
+        reject(error);
+      },
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        resolve(downloadURL);
+      }
+    );
   });
-  if (!res.ok) throw new Error('Upload failed');
-  const data = await res.json();
-  return data.url;
 };
 
 interface ContentSection {
@@ -447,41 +459,60 @@ const compressImage = (file: File, callback: (base64: string) => void) => {
   reader.readAsDataURL(file);
 };
 
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+
 const AdminContent = () => {
-  const [pages, setPages] = useState<PageContent[]>(() => {
-    const saved = localStorage.getItem('siteContent');
-    return saved ? JSON.parse(saved) : initialPages;
-  });
+  const [pages, setPages] = useState<PageContent[]>(initialPages);
   const [selectedPageId, setSelectedPageId] = useState<string>(initialPages[0].id);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const docRef = doc(db, 'content', 'siteContent');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setPages(docSnap.data().pages);
+        } else {
+          // Fallback to local storage if not in firestore yet
+          const saved = localStorage.getItem('siteContent');
+          if (saved) setPages(JSON.parse(saved));
+        }
+      } catch (error) {
+        // Fallback to local storage if offline or permission denied
+        const saved = localStorage.getItem('siteContent');
+        if (saved) setPages(JSON.parse(saved));
+      }
+    };
+    fetchContent();
+  }, []);
 
   const selectedPage = pages.find(p => p.id === selectedPageId) || initialPages[0];
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('Save Changes');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('Saving...');
     
-    // Simulate API call
+    try {
+      const docRef = doc(db, 'content', 'siteContent');
+      await setDoc(docRef, { pages });
+      localStorage.setItem('siteContent', JSON.stringify(pages)); // Keep local backup
+      setIsSaving(false);
+      setSaveMessage('Saved!');
+    } catch (error) {
+      console.error('Error saving content:', error);
+      setIsSaving(false);
+      setSaveMessage('Error saving');
+    }
+    
+    // Reset message after 2 seconds
     setTimeout(() => {
-      console.log('Saving content:', pages);
-      try {
-        localStorage.setItem('siteContent', JSON.stringify(pages));
-        setIsSaving(false);
-        setSaveMessage('Saved!');
-      } catch (error) {
-        console.error('Error saving content:', error);
-        setIsSaving(false);
-        setSaveMessage('Error: Images too large');
-      }
-      
-      // Reset message after 2 seconds
-      setTimeout(() => {
-        setSaveMessage('Save Changes');
-      }, 2000);
-    }, 800);
+      setSaveMessage('Save Changes');
+    }, 2000);
   };
 
   const updateSectionContent = (sectionId: string, newContent: any) => {

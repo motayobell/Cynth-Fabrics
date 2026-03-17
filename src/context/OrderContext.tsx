@@ -130,24 +130,58 @@ const INITIAL_ORDERS: Order[] = [
   }
 ];
 
+import { db } from '../firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+
 export const OrderProvider = ({ children }: { children: ReactNode }) => {
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const savedOrders = localStorage.getItem('orders');
-    if (savedOrders) {
-      // Parse dates back to Date objects
-      return JSON.parse(savedOrders, (key, value) => {
-        if (key === 'date') return new Date(value);
-        return value;
-      });
-    }
-    return INITIAL_ORDERS;
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    localStorage.setItem('orders', JSON.stringify(orders));
-  }, [orders]);
+    const q = query(collection(db, 'orders'), orderBy('date', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial data if empty
+        seedInitialData();
+      } else {
+        const ordersData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+          };
+        }) as Order[];
+        setOrders(ordersData);
+      }
+    }, (error) => {
+      // Fallback to local data if offline or permission denied
+      if (orders.length === 0) {
+        setOrders(INITIAL_ORDERS);
+      }
+    });
 
-  const addOrder = (newOrderData: Omit<Order, 'id' | 'status' | 'date' | 'customer'> & { customerName: string }) => {
+    return () => unsubscribe();
+  }, []);
+
+  const seedInitialData = async () => {
+    try {
+      for (const order of INITIAL_ORDERS) {
+        const docRef = doc(collection(db, 'orders'), String(order.id));
+        await setDoc(docRef, {
+          ...order,
+          date: order.date
+        });
+      }
+    } catch (error) {
+      // If seeding fails (e.g., due to permissions), fallback to local data
+      if (orders.length === 0) {
+        setOrders(INITIAL_ORDERS);
+      }
+    }
+  };
+
+  const addOrder = async (newOrderData: Omit<Order, 'id' | 'status' | 'date' | 'customer'> & { customerName: string }) => {
     const initials = newOrderData.customerName
       .split(' ')
       .map(n => n[0])
@@ -174,27 +208,43 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
       date: new Date()
     };
 
-    setOrders(prevOrders => [newOrder, ...prevOrders]);
+    try {
+      const docRef = doc(collection(db, 'orders'), String(newOrder.id));
+      await setDoc(docRef, newOrder);
+    } catch (error) {
+      console.error("Error adding order:", error);
+      throw error;
+    }
   };
 
-  const updateOrderStatus = (id: string, status: Order['status']) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === id ? { ...order, status } : order
-      )
-    );
+  const updateOrderStatus = async (id: string, status: Order['status']) => {
+    try {
+      const docRef = doc(db, 'orders', String(id));
+      await updateDoc(docRef, { status });
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      throw error;
+    }
   };
 
-  const updateOrderShipping = (id: string, fee: string, currency: string) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === id ? { ...order, shippingFee: fee, shippingCurrency: currency } : order
-      )
-    );
+  const updateOrderShipping = async (id: string, fee: string, currency: string) => {
+    try {
+      const docRef = doc(db, 'orders', String(id));
+      await updateDoc(docRef, { shippingFee: fee, shippingCurrency: currency });
+    } catch (error) {
+      console.error("Error updating order shipping:", error);
+      throw error;
+    }
   };
 
-  const deleteOrder = (id: string) => {
-    setOrders(prevOrders => prevOrders.filter(order => order.id !== id));
+  const deleteOrder = async (id: string) => {
+    try {
+      const docRef = doc(db, 'orders', String(id));
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      throw error;
+    }
   };
 
   return (

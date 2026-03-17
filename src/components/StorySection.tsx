@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MediaCarousel } from './MediaCarousel';
 import { MediaItem } from './HeroCarousel';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export function StorySection() {
   const [content, setContent] = useState({
@@ -22,22 +24,34 @@ export function StorySection() {
   });
 
   useEffect(() => {
-    try {
-      const savedContent = localStorage.getItem('siteContent');
-      if (savedContent) {
-        const parsed = JSON.parse(savedContent);
-        const homePage = parsed.find((p: any) => p.id === 'home');
-        const storySection = homePage?.sections.find((s: any) => s.id === 'home-story');
-        if (storySection?.content) {
-          setContent(prev => ({
-            ...prev,
-            ...storySection.content
-          }));
+    const fetchContent = async () => {
+      try {
+        const docRef = doc(db, 'content', 'siteContent');
+        const docSnap = await getDoc(docRef);
+        
+        let parsed = null;
+        if (docSnap.exists()) {
+          parsed = docSnap.data().pages;
+        } else {
+          const savedContent = localStorage.getItem('siteContent');
+          if (savedContent) parsed = JSON.parse(savedContent);
         }
+
+        if (parsed) {
+          const homePage = parsed.find((p: any) => p.id === 'home');
+          const storySection = homePage?.sections.find((s: any) => s.id === 'home-story');
+          if (storySection?.content) {
+            setContent(prev => ({
+              ...prev,
+              ...storySection.content
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load content', e);
       }
-    } catch (e) {
-      console.error('Failed to load content', e);
-    }
+    };
+    fetchContent();
   }, []);
 
   return (
