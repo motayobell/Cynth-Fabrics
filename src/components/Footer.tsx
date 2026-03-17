@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Lock } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-black text-cream pt-16 pb-8">
+    <footer className="bg-black text-cream pt-16 pb-8 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand Section */}
@@ -60,8 +61,15 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 mt-12 pt-8 text-center text-xs text-cream/60">
+        <div className="border-t border-white/10 mt-12 pt-8 text-center text-xs text-cream/60 relative">
           <p>&copy; {new Date().getFullYear()} Cynth Fabrics. All rights reserved.</p>
+          <Link 
+            to="/admin/login" 
+            className="absolute right-0 bottom-0 p-2 opacity-0 hover:opacity-30 transition-opacity text-white"
+            title="Admin Login"
+          >
+            <Lock size={14} />
+          </Link>
         </div>
       </div>
     </footer>

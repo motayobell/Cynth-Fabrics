@@ -18,6 +18,18 @@ import {
 
 type SectionType = 'hero' | 'features' | 'text' | 'gallery' | 'cta' | 'split' | 'quote' | 'stats';
 
+const uploadFile = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('media', file);
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json();
+  return data.url;
+};
+
 interface ContentSection {
   id: string;
   type: SectionType;
@@ -109,7 +121,14 @@ const initialPages: PageContent[] = [
         title: 'Story Section',
         isVisible: true,
         content: {
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeBhEn-EOzB9gmZQPNqkQVzZ-xNnW6TAb2s989SZBLmldrHJ2Al1OPQx7yVcUOyxWuimxTuX9zgTmQ25ZLSjZ_bYo29APMCNb84aAQ1jX_dFYTwZkWmZ9e42fFAfQgD_uftCqmQKpsLnacIpxyUUXikUv21Zu_1fl0J4hDsNRudMwZfbEX0SaervB1rT33TRCNbx-e_LMLIU_GyMcMr9ZH5dPT_lyXchylZneklp6Lt0ZyWoW2UkBSAYpRVKeRCg_RBE5quvdo6Ww',
+          mediaItems: [
+            {
+              id: 1,
+              type: 'image',
+              src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeBhEn-EOzB9gmZQPNqkQVzZ-xNnW6TAb2s989SZBLmldrHJ2Al1OPQx7yVcUOyxWuimxTuX9zgTmQ25ZLSjZ_bYo29APMCNb84aAQ1jX_dFYTwZkWmZ9e42fFAfQgD_uftCqmQKpsLnacIpxyUUXikUv21Zu_1fl0J4hDsNRudMwZfbEX0SaervB1rT33TRCNbx-e_LMLIU_GyMcMr9ZH5dPT_lyXchylZneklp6Lt0ZyWoW2UkBSAYpRVKeRCg_RBE5quvdo6Ww',
+              alt: 'Sustainable Materials'
+            }
+          ],
           smallHeading: 'Our Heritage',
           heading: 'Tradition Reimagined for the Modern World',
           text1: 'Founded in the heart of Lagos and refined for the global stage, Cynth Fabrics is more than a fashion label. We are a bridge between generations. Each piece we create is a love letter to Nigerian craftsmanship, utilizing techniques passed down through centuries to dress the visionaries of today.',
@@ -780,6 +799,169 @@ const AdminContent = () => {
              {renderInput('Link Text', section.content.linkText, 'linkText', section.id)}
              {renderInput('Link URL', section.content.linkUrl, 'linkUrl', section.id)}
              
+             {section.content.mediaItems !== undefined ? (
+              <div className="mt-6 border-t pt-6">
+                <h4 className="font-medium text-gray-900 mb-4">Carousel Media Items</h4>
+                <div className="space-y-4">
+                  {section.content.mediaItems?.map((item: any, index: number) => (
+                    <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                      <button 
+                        onClick={() => {
+                          const newItems = section.content.mediaItems.filter((_: any, i: number) => i !== index);
+                          updateSectionContent(section.id, { mediaItems: newItems });
+                        }}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                          <select
+                            value={item.type}
+                            onChange={(e) => {
+                              const newItems = [...section.content.mediaItems];
+                              newItems[index] = { ...item, type: e.target.value };
+                              updateSectionContent(section.id, { mediaItems: newItems });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
+                          >
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Source (URL or Upload)</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={item.src}
+                              onChange={(e) => {
+                                const newItems = [...section.content.mediaItems];
+                                newItems[index] = { ...item, src: e.target.value };
+                                updateSectionContent(section.id, { mediaItems: newItems });
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
+                              placeholder={item.type === 'video' ? "Video URL" : "Image URL"}
+                            />
+                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-md border border-gray-300 flex items-center justify-center transition-colors" title="Upload from computer">
+                              <Upload size={16} />
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept={item.type === 'video' ? "video/*" : "image/*"}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setSaveMessage("Uploading...");
+                                    try {
+                                      const url = await uploadFile(file);
+                                      const newItems = [...section.content.mediaItems];
+                                      newItems[index] = { ...item, src: url };
+                                      updateSectionContent(section.id, { mediaItems: newItems });
+                                      setSaveMessage("Uploaded!");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                    } catch (err) {
+                                      setSaveMessage("Upload Failed");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {item.type === 'video' && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Poster Image (URL or Upload)</label>
+                            <div className="flex gap-2">
+                              <input 
+                                type="text" 
+                                value={item.poster || ''}
+                                onChange={(e) => {
+                                  const newItems = [...section.content.mediaItems];
+                                  newItems[index] = { ...item, poster: e.target.value };
+                                  updateSectionContent(section.id, { mediaItems: newItems });
+                                }}
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
+                                placeholder="Poster Image URL"
+                              />
+                              <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-md border border-gray-300 flex items-center justify-center transition-colors" title="Upload poster">
+                                <Upload size={16} />
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setSaveMessage("Uploading...");
+                                      try {
+                                        const url = await uploadFile(file);
+                                        const newItems = [...section.content.mediaItems];
+                                        newItems[index] = { ...item, poster: url };
+                                        updateSectionContent(section.id, { mediaItems: newItems });
+                                        setSaveMessage("Uploaded!");
+                                        setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                      } catch (err) {
+                                        setSaveMessage("Upload Failed");
+                                        setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                      }
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {item.type === 'image' && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Alt Text</label>
+                            <input 
+                              type="text" 
+                              value={item.alt || ''}
+                              onChange={(e) => {
+                                const newItems = [...section.content.mediaItems];
+                                newItems[index] = { ...item, alt: e.target.value };
+                                updateSectionContent(section.id, { mediaItems: newItems });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Preview */}
+                      <div className="mt-3 h-32 bg-gray-200 rounded overflow-hidden">
+                        {item.type === 'image' && item.src ? (
+                          <img src={item.src} alt="Preview" className="w-full h-full object-cover" />
+                        ) : item.type === 'video' && item.src ? (
+                          <video src={item.src} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            No media
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    const newItems = [...(section.content.mediaItems || []), { id: Date.now(), type: 'image', src: '', alt: '' }];
+                    updateSectionContent(section.id, { mediaItems: newItems });
+                  }}
+                  className="mt-4 flex items-center gap-2 text-sm font-medium text-[#f20c92] hover:text-[#d00a7d]"
+                >
+                  <Plus size={16} /> Add Media Item
+                </button>
+              </div>
+             ) : (
              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
               <div className="flex gap-2">
@@ -812,6 +994,7 @@ const AdminContent = () => {
                 </div>
               )}
             </div>
+            )}
 
             {section.content.cardTitle && (
                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">

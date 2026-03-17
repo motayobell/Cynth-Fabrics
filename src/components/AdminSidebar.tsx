@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -8,11 +8,13 @@ import {
   TrendingUp, 
   Package,
   Shield,
-  FileText
+  FileText,
+  LogOut
 } from 'lucide-react';
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = React.useState({ name: 'Cynthia A.', role: 'Super Admin' });
 
   React.useEffect(() => {
@@ -26,11 +28,33 @@ const AdminSidebar = () => {
     }
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    navigate('/admin/login');
+  };
+
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 hidden md:flex flex-col">
-      <div className="p-8 border-b border-gray-200">
-        <h1 className="font-serif text-2xl text-yellow-600 font-bold tracking-tighter">CYNTH<br/>ADMIN</h1>
-      </div>
+    <>
+      {/* Mobile Logout Button */}
+      <button 
+        onClick={handleLogout}
+        className="md:hidden fixed top-4 right-4 z-50 bg-white p-2.5 rounded-full shadow-md text-gray-600 hover:text-red-500 border border-gray-200"
+        title="Logout"
+      >
+        <LogOut size={20} />
+      </button>
+
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 hidden md:flex flex-col">
+        <div className="p-8 border-b border-gray-200 flex justify-between items-start">
+          <h1 className="font-serif text-2xl text-yellow-600 font-bold tracking-tighter">CYNTH<br/>ADMIN</h1>
+          <button 
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50"
+            title="Logout"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       
       <nav className="flex-1 p-6 space-y-2">
         <NavItem 
@@ -95,6 +119,7 @@ const AdminSidebar = () => {
         </div>
       </div>
     </aside>
+    </>
   );
 };
 

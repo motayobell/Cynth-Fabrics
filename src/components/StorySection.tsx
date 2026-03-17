@@ -1,7 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { MediaCarousel } from './MediaCarousel';
+import { MediaItem } from './HeroCarousel';
 
 export function StorySection() {
+  const [content, setContent] = useState({
+    smallHeading: 'Our Heritage',
+    heading: 'Tradition Reimagined for the Modern World',
+    text1: 'Founded in the heart of Lagos and refined for the global stage, Cynth Fabrics is more than a fashion label. We are a bridge between generations. Each piece we create is a love letter to Nigerian craftsmanship, utilizing techniques passed down through centuries to dress the visionaries of today.',
+    text2: 'We source only the finest fabrics—from authentic Aso-Oke to premium Italian silks—ensuring that when you wear Cynth Fabrics, you carry the weight of tradition with the comfort of modern luxury.',
+    linkText: 'Discover Our Process',
+    linkUrl: '/about',
+    mediaItems: [
+      {
+        id: 1,
+        type: 'image' as const,
+        src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDeBhEn-EOzB9gmZQPNqkQVzZ-xNnW6TAb2s989SZBLmldrHJ2Al1OPQx7yVcUOyxWuimxTuX9zgTmQ25ZLSjZ_bYo29APMCNb84aAQ1jX_dFYTwZkWmZ9e42fFAfQgD_uftCqmQKpsLnacIpxyUUXikUv21Zu_1fl0J4hDsNRudMwZfbEX0SaervB1rT33TRCNbx-e_LMLIU_GyMcMr9ZH5dPT_lyXchylZneklp6Lt0ZyWoW2UkBSAYpRVKeRCg_RBE5quvdo6Ww',
+        alt: 'Sustainable Materials'
+      }
+    ] as MediaItem[]
+  });
+
+  useEffect(() => {
+    try {
+      const savedContent = localStorage.getItem('siteContent');
+      if (savedContent) {
+        const parsed = JSON.parse(savedContent);
+        const homePage = parsed.find((p: any) => p.id === 'home');
+        const storySection = homePage?.sections.find((s: any) => s.id === 'home-story');
+        if (storySection?.content) {
+          setContent(prev => ({
+            ...prev,
+            ...storySection.content
+          }));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load content', e);
+    }
+  }, []);
+
   return (
     <section className="py-24 bg-cream overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
@@ -9,29 +47,31 @@ export function StorySection() {
           {/* Image Side */}
           <div className="lg:w-1/2 relative">
             <div className="absolute -top-6 -left-6 w-full h-full border-t-2 border-l-2 border-brand-pink z-0"></div>
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeBhEn-EOzB9gmZQPNqkQVzZ-xNnW6TAb2s989SZBLmldrHJ2Al1OPQx7yVcUOyxWuimxTuX9zgTmQ25ZLSjZ_bYo29APMCNb84aAQ1jX_dFYTwZkWmZ9e42fFAfQgD_uftCqmQKpsLnacIpxyUUXikUv21Zu_1fl0J4hDsNRudMwZfbEX0SaervB1rT33TRCNbx-e_LMLIU_GyMcMr9ZH5dPT_lyXchylZneklp6Lt0ZyWoW2UkBSAYpRVKeRCg_RBE5quvdo6Ww" 
-              alt="Sustainable Materials" 
-              className="rounded-sm shadow-xl relative z-10 w-full h-[500px] object-cover"
-              referrerPolicy="no-referrer"
-            />
+            <div className="relative z-10 w-full h-[500px] rounded-sm shadow-xl bg-gray-200">
+              <MediaCarousel 
+                items={content.mediaItems} 
+                className="w-full h-full rounded-sm"
+              />
+            </div>
             <div className="absolute -bottom-6 -right-6 w-32 h-32 border-b-2 border-r-2 border-brand-pink z-20"></div>
           </div>
 
           {/* Text Side */}
           <div className="lg:w-1/2 space-y-8">
-            <span className="text-brand-pink font-bold uppercase tracking-[0.4em] text-xs">Our Heritage</span>
-            <h2 className="font-serif text-4xl md:text-5xl text-deep-brown leading-tight">Tradition Reimagined for the Modern World</h2>
+            <span className="text-brand-pink font-bold uppercase tracking-[0.4em] text-xs">{content.smallHeading}</span>
+            <h2 className="font-serif text-4xl md:text-5xl text-deep-brown leading-tight">{content.heading}</h2>
             <p className="text-stone-600 text-lg leading-relaxed font-light">
-              Founded in the heart of Lagos and refined for the global stage, Cynth Fabrics is more than a fashion label. We are a bridge between generations. Each piece we create is a love letter to Nigerian craftsmanship, utilizing techniques passed down through centuries to dress the visionaries of today.
+              {content.text1}
             </p>
-            <p className="text-stone-600 text-lg leading-relaxed font-light">
-              We source only the finest fabrics—from authentic Aso-Oke to premium Italian silks—ensuring that when you wear Cynth Fabrics, you carry the weight of tradition with the comfort of modern luxury.
-            </p>
+            {content.text2 && (
+              <p className="text-stone-600 text-lg leading-relaxed font-light">
+                {content.text2}
+              </p>
+            )}
             <div className="pt-4">
-              <Link to="/about" className="inline-flex items-center space-x-4 group">
+              <Link to={content.linkUrl} className="inline-flex items-center space-x-4 group">
                 <span className="w-12 h-[1px] bg-brand-pink group-hover:w-20 transition-all duration-300"></span>
-                <span className="uppercase tracking-widest text-sm font-bold text-brand-pink">Discover Our Process</span>
+                <span className="uppercase tracking-widest text-sm font-bold text-brand-pink">{content.linkText}</span>
               </Link>
             </div>
           </div>

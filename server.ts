@@ -2,8 +2,28 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import multer from 'multer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 
 async function startServer() {
   const app = express();
@@ -14,6 +34,15 @@ async function startServer() {
   // API Routes Placeholder
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
+  });
+
+  // Upload endpoint
+  app.post('/api/upload', upload.single('media'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    // Return the public URL path
+    res.json({ url: `/uploads/${req.file.filename}` });
   });
 
   app.post('/api/invoice/send', (req, res) => {
