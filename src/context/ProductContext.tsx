@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export interface Product {
@@ -38,8 +38,12 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (snapshot.empty) {
-        // Seed initial data if empty
-        seedInitialData();
+        // Seed initial data if empty and user is likely an admin
+        if (auth.currentUser) {
+          seedInitialData();
+        } else {
+          setProducts(INITIAL_PRODUCTS);
+        }
       } else {
         const productsData = snapshot.docs.map(doc => ({
           id: doc.id,

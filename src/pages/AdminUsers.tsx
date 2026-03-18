@@ -40,7 +40,7 @@ const initialAdmins: AdminUser[] = [
   }
 ];
 
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
 
 const AdminUsers = () => {
@@ -54,8 +54,12 @@ const AdminUsers = () => {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (snapshot.empty) {
-        // Seed initial data if empty
-        seedInitialData();
+        // Seed initial data if empty and user is likely an admin
+        if (auth.currentUser) {
+          seedInitialData();
+        } else {
+          setAdmins(initialAdmins);
+        }
       } else {
         const usersData = snapshot.docs.map(doc => ({
           id: doc.id,

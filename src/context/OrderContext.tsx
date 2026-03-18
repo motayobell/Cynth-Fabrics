@@ -130,7 +130,7 @@ const INITIAL_ORDERS: Order[] = [
   }
 ];
 
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export const OrderProvider = ({ children }: { children: ReactNode }) => {
@@ -141,8 +141,12 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (snapshot.empty) {
-        // Seed initial data if empty
-        seedInitialData();
+        // Seed initial data if empty and user is likely an admin
+        if (auth.currentUser) {
+          seedInitialData();
+        } else {
+          setOrders(INITIAL_ORDERS);
+        }
       } else {
         const ordersData = snapshot.docs.map(doc => {
           const data = doc.data();
