@@ -15,8 +15,6 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import { PRODUCT_CATEGORIES } from '../constants';
 import { useProducts, Product } from '../context/ProductContext';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
 
 const compressImage = (file: File, callback: (base64: string) => void) => {
   const reader = new FileReader();
@@ -101,12 +99,6 @@ const AdminProducts = () => {
     }
   };
 
-  const uploadToFirebase = async (base64String: string): Promise<string> => {
-    const storageRef = ref(storage, `products/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`);
-    await uploadString(storageRef, base64String, 'data_url');
-    return await getDownloadURL(storageRef);
-  };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -114,25 +106,13 @@ const AdminProducts = () => {
       const uploadPromises = Array.from(files).map(file => {
         return new Promise<string>((resolve) => {
           if (file.type.startsWith('image/')) {
-            compressImage(file, async (base64) => {
-              try {
-                const url = await uploadToFirebase(base64);
-                resolve(url);
-              } catch (error) {
-                console.error("Upload failed", error);
-                resolve(base64); // Fallback to base64 if upload fails
-              }
+            compressImage(file, (base64) => {
+              resolve(base64);
             });
           } else {
             const reader = new FileReader();
-            reader.onloadend = async () => {
-              try {
-                const url = await uploadToFirebase(reader.result as string);
-                resolve(url);
-              } catch (error) {
-                console.error("Upload failed", error);
-                resolve(reader.result as string);
-              }
+            reader.onloadend = () => {
+              resolve(reader.result as string);
             };
             reader.readAsDataURL(file);
           }
