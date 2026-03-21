@@ -15,43 +15,52 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import { PRODUCT_CATEGORIES } from '../constants';
 import { useProducts, Product } from '../context/ProductContext';
+import { auth } from '../firebase';
 
-const compressImage = (file: File, callback: (base64: string) => void) => {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      
-      const MAX_WIDTH = 1200;
-      const MAX_HEIGHT = 1200;
-      
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
         }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
-      
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      callback(dataUrl);
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        resolve(dataUrl);
+      };
+      img.onerror = () => {
+        reject(new Error("Failed to load image for compression"));
+      };
+      img.src = e.target?.result as string;
     };
-    img.src = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = () => {
+      reject(new Error("Failed to read file"));
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 const AdminProducts = () => {
@@ -104,11 +113,16 @@ const AdminProducts = () => {
     if (files && files.length > 0) {
       setIsUploading(true);
       const uploadPromises = Array.from(files).map(file => {
-        return new Promise<string>((resolve) => {
+        return new Promise<string>((resolve, reject) => {
+          if (file.size > 5 * 1024 * 1024) {
+             setSaveError(`File ${file.name} is too large. Please select a file under 5MB.`);
+             reject(new Error('File too large'));
+             return;
+          }
           if (file.type.startsWith('image/')) {
-            compressImage(file, (base64) => {
-              resolve(base64);
-            });
+            compressImage(file)
+              .then(resolve)
+              .catch(reject);
           } else {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -119,7 +133,11 @@ const AdminProducts = () => {
         });
       });
 
-      Promise.all(uploadPromises).then(urls => {
+      Promise.allSettled(uploadPromises).then(results => {
+        const urls = results
+          .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+          .map(result => result.value);
+          
         setProductForm(prev => ({ 
           ...prev, 
           images: [...prev.images, ...urls] 
@@ -174,6 +192,11 @@ const AdminProducts = () => {
 
     try {
       setSaveError(null);
+      
+      if (!auth.currentUser) {
+        throw new Error('You are not authenticated with the database. Please log out and sign in with Google to save changes.');
+      }
+
       if (editingId) {
         await updateProduct(editingId, productData);
         setEditingId(null);
@@ -192,9 +215,9 @@ const AdminProducts = () => {
         images: [],
         description: '' 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      setSaveError('Failed to save product. Please try again.');
+      setSaveError(`Failed to save product: ${error.message || 'Unknown error'}. Please try again.`);
     }
   };
 

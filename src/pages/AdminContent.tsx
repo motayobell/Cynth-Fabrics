@@ -18,50 +18,62 @@ import {
 
 type SectionType = 'hero' | 'features' | 'text' | 'gallery' | 'cta' | 'split' | 'quote' | 'stats';
 
-const compressImage = (file: File, callback: (base64: string) => void) => {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      
-      const MAX_WIDTH = 1200;
-      const MAX_HEIGHT = 1200;
-      
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
         }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
-      
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      callback(dataUrl);
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        resolve(dataUrl);
+      };
+      img.onerror = () => {
+        reject(new Error("Failed to load image for compression"));
+      };
+      img.src = e.target?.result as string;
     };
-    img.src = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = () => {
+      reject(new Error("Failed to read file"));
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 const uploadFile = async (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (file.size > 5 * 1024 * 1024) {
+      reject(new Error(`File ${file.name} is too large. Please select a file under 5MB.`));
+      return;
+    }
     if (file.type.startsWith('image/')) {
-      compressImage(file, (base64) => {
-        resolve(base64);
-      });
+      compressImage(file)
+        .then(resolve)
+        .catch(reject);
     } else {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -453,7 +465,7 @@ const initialPages: PageContent[] = [
 ];
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 const AdminContent = () => {
   const [pages, setPages] = useState<PageContent[]>(initialPages);
@@ -491,15 +503,18 @@ const AdminContent = () => {
     setSaveMessage('Saving...');
     
     try {
+      if (!auth.currentUser) {
+        throw new Error('Not authenticated with database');
+      }
       const docRef = doc(db, 'content', 'siteContent');
       await setDoc(docRef, { pages });
       localStorage.setItem('siteContent', JSON.stringify(pages)); // Keep local backup
       setIsSaving(false);
       setSaveMessage('Saved!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving content:', error);
       setIsSaving(false);
-      setSaveMessage('Error saving');
+      setSaveMessage(error.message === 'Not authenticated with database' ? 'Login with Google to save' : 'Error saving');
     }
     
     // Reset message after 2 seconds
@@ -583,8 +598,14 @@ const AdminContent = () => {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          compressImage(file, (base64) => {
-                            updateSectionContent(section.id, { backgroundImage: base64 });
+                          setSaveMessage("Uploading...");
+                          uploadFile(file).then((url) => {
+                            updateSectionContent(section.id, { backgroundImage: url });
+                            setSaveMessage("Uploaded!");
+                            setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                          }).catch((err: any) => {
+                            setSaveMessage(err.message || "Upload Failed");
+                            setTimeout(() => setSaveMessage('Save Changes'), 3000);
                           });
                         }
                       }}
@@ -663,10 +684,16 @@ const AdminContent = () => {
                                   }
                                   
                                   if (file.type.startsWith('image/')) {
-                                    compressImage(file, (base64) => {
+                                    setSaveMessage("Uploading...");
+                                    uploadFile(file).then((url) => {
                                       const newItems = [...section.content.items];
-                                      newItems[index] = { ...item, src: base64 };
+                                      newItems[index] = { ...item, src: url };
                                       updateSectionContent(section.id, { items: newItems });
+                                      setSaveMessage("Uploaded!");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                    }).catch((err: any) => {
+                                      setSaveMessage(err.message || "Upload Failed");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                     });
                                   } else {
                                     const reader = new FileReader();
@@ -709,10 +736,16 @@ const AdminContent = () => {
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    compressImage(file, (base64) => {
+                                    setSaveMessage("Uploading...");
+                                    uploadFile(file).then((url) => {
                                       const newItems = [...section.content.items];
-                                      newItems[index] = { ...item, poster: base64 };
+                                      newItems[index] = { ...item, poster: url };
                                       updateSectionContent(section.id, { items: newItems });
+                                      setSaveMessage("Uploaded!");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                    }).catch((err: any) => {
+                                      setSaveMessage(err.message || "Upload Failed");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                     });
                                   }
                                 }}
@@ -794,8 +827,14 @@ const AdminContent = () => {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          compressImage(file, (base64) => {
-                            updateSectionContent(section.id, { [key]: base64 });
+                          setSaveMessage("Uploading...");
+                          uploadFile(file).then((url) => {
+                            updateSectionContent(section.id, { [key]: url });
+                            setSaveMessage("Uploaded!");
+                            setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                          }).catch((err: any) => {
+                            setSaveMessage(err.message || "Upload Failed");
+                            setTimeout(() => setSaveMessage('Save Changes'), 3000);
                           });
                         }
                       }}
@@ -887,8 +926,8 @@ const AdminContent = () => {
                                       updateSectionContent(section.id, { mediaItems: newItems });
                                       setSaveMessage("Uploaded!");
                                       setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                                    } catch (err) {
-                                      setSaveMessage("Upload Failed");
+                                    } catch (err: any) {
+                                      setSaveMessage(err.message || "Upload Failed");
                                       setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                     }
                                   }
@@ -930,8 +969,8 @@ const AdminContent = () => {
                                         updateSectionContent(section.id, { mediaItems: newItems });
                                         setSaveMessage("Uploaded!");
                                         setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                                      } catch (err) {
-                                        setSaveMessage("Upload Failed");
+                                      } catch (err: any) {
+                                        setSaveMessage(err.message || "Upload Failed");
                                         setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                       }
                                     }
@@ -1004,8 +1043,14 @@ const AdminContent = () => {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        compressImage(file, (base64) => {
-                          updateSectionContent(section.id, { image: base64 });
+                        setSaveMessage("Uploading...");
+                        uploadFile(file).then((url) => {
+                          updateSectionContent(section.id, { image: url });
+                          setSaveMessage("Uploaded!");
+                          setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                        }).catch((err: any) => {
+                          setSaveMessage(err.message || "Upload Failed");
+                          setTimeout(() => setSaveMessage('Save Changes'), 3000);
                         });
                       }
                     }}
@@ -1145,10 +1190,16 @@ const AdminContent = () => {
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                compressImage(file, (base64) => {
+                                setSaveMessage("Uploading...");
+                                uploadFile(file).then((url) => {
                                   const newItems = [...section.content.items];
-                                  newItems[index] = { ...item, image: base64 };
+                                  newItems[index] = { ...item, image: url };
                                   updateSectionContent(section.id, { items: newItems });
+                                  setSaveMessage("Uploaded!");
+                                  setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                }).catch((err: any) => {
+                                  setSaveMessage(err.message || "Upload Failed");
+                                  setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                 });
                               }
                             }}
@@ -1230,9 +1281,15 @@ const AdminContent = () => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      compressImage(file, (base64) => {
-                        const newImages = [...(section.content.images || []), base64];
+                      setSaveMessage("Uploading...");
+                      uploadFile(file).then((url) => {
+                        const newImages = [...(section.content.images || []), url];
                         updateSectionContent(section.id, { images: newImages });
+                        setSaveMessage("Uploaded!");
+                        setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                      }).catch((err: any) => {
+                        setSaveMessage(err.message || "Upload Failed");
+                        setTimeout(() => setSaveMessage('Save Changes'), 3000);
                       });
                     }
                   }}

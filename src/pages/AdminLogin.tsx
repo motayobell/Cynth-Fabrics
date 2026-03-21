@@ -215,6 +215,9 @@ export default function AdminLogin() {
                 Login to Dashboard
                 <ArrowRight className="w-4 h-4" />
               </button>
+              <p className="text-xs text-center text-amber-600 mt-2">
+                Note: Email login is for testing only and cannot save changes to the database. Use Google Sign-In for full access.
+              </p>
             </form>
           </div>
 
