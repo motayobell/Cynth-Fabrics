@@ -44,7 +44,15 @@ export default function AdminLogin() {
       navigate('/admin/dashboard');
     } catch (err: any) {
       console.error("Google sign-in error:", err);
-      setError(err.message || 'Failed to sign in with Google');
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Domain not authorized. Please add "cynthfabrics.com" to Authorized Domains in Firebase Console.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Sign-in popup was blocked by your browser. Please allow popups for this site.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in window was closed before completion.');
+      } else {
+        setError(err.message || 'Failed to sign in with Google');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,32 +85,38 @@ export default function AdminLogin() {
       }
 
       // 2. Check Firestore for added admins
-      const q = query(collection(db, 'users'), where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      try {
+        const q = query(collection(db, 'users'), where('email', '==', email));
+        const querySnapshot = await getDocs(q);
 
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
 
-        if (userData.password === password) {
-          // Success!
-          const user = {
-            id: userDoc.id,
-            name: userData.name,
-            email: userData.email,
-            role: userData.role,
-            avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.name}&background=random`
-          };
+          if (userData.password === password) {
+            // Success!
+            const user = {
+              id: userDoc.id,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role,
+              avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.name}&background=random`
+            };
 
-          // Update last login
-          await updateDoc(doc(db, 'users', userDoc.id), {
-            lastLogin: new Date().toLocaleString()
-          });
+            // Update last login
+            await updateDoc(doc(db, 'users', userDoc.id), {
+              lastLogin: new Date().toLocaleString()
+            });
 
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          navigate('/admin/dashboard');
-          return;
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            navigate('/admin/dashboard');
+            return;
+          }
         }
+      } catch (firestoreErr: any) {
+        // If firestore fails (e.g. permission denied because not logged in via Firebase Auth)
+        // we just continue to the generic error message below
+        console.warn("Firestore check failed (likely permissions):", firestoreErr);
       }
 
       setError('Invalid email or password. Please use Google Sign-In or default credentials.');
