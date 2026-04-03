@@ -6,20 +6,34 @@ import multer from 'multer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Ensure uploads directory exists with safety
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
+// Ensure uploads and public directories exist with safety
+const uploadsDir = path.join(__dirname, 'uploads');
+const publicDir = path.join(__dirname, 'public');
 try {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Created uploads directory at:', uploadsDir);
+  }
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+    console.log('Created public directory at:', publicDir);
   }
 } catch (err) {
-  console.warn('Could not create uploads directory, might be a permission issue:', err);
+  console.error('Could not create directories:', err);
 }
 
 // Configure multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+    // Double check directory exists before each upload
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      cb(null, uploadsDir);
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -48,34 +62,52 @@ async function startServer() {
     res.json({ status: 'ok', message: 'Server is running' });
   });
 
-  // Upload endpoint
-  app.post('/api/upload', upload.single('media'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-    // Return the public URL path
-    res.json({ url: `/uploads/${req.file.filename}` });
+  // Upload endpoint with better error handling
+  app.post('/api/upload', (req, res) => {
+    upload.single('media')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err);
+        return res.status(400).json({ error: `Upload error: ${err.message}` });
+      } else if (err) {
+        console.error('Unknown upload error:', err);
+        return res.status(500).json({ error: `Server error: ${err.message}` });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      // Return the public URL path
+      res.json({ url: `/uploads/${req.file.filename}` });
+    });
   });
 
   // Specific logo upload endpoint
-  app.post('/api/upload-logo', upload.single('logo'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-    
-    const oldPath = req.file.path;
-    const newPath = path.join(__dirname, 'public', 'logo.png');
-    
-    try {
-      if (fs.existsSync(newPath)) {
-        fs.unlinkSync(newPath);
+  app.post('/api/upload-logo', (req, res) => {
+    upload.single('logo')(req, res, (err) => {
+      if (err) {
+        console.error('Logo upload error:', err);
+        return res.status(500).json({ error: `Upload error: ${err.message}` });
       }
-      fs.renameSync(oldPath, newPath);
-      res.json({ success: true, url: '/logo.png' });
-    } catch (err) {
-      console.error('Error moving logo:', err);
-      res.status(500).json({ error: 'Failed to save logo' });
-    }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      
+      const oldPath = req.file.path;
+      const newPath = path.join(__dirname, 'public', 'logo.png');
+      
+      try {
+        if (fs.existsSync(newPath)) {
+          fs.unlinkSync(newPath);
+        }
+        fs.renameSync(oldPath, newPath);
+        res.json({ success: true, url: '/logo.png' });
+      } catch (err) {
+        console.error('Error moving logo:', err);
+        res.status(500).json({ error: 'Failed to save logo' });
+      }
+    });
   });
 
   app.post('/api/invoice/send', (req, res) => {
@@ -104,9 +136,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Production static file serving (placeholder for build)
+    // Production static file serving
     app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.use('/uploads', express.static(path.resolve(__dirname, 'public', 'uploads')));
+    app.use(express.static(path.resolve(__dirname, 'public')));
+    app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
     app.get('*', (req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });

@@ -92,8 +92,20 @@ const uploadFile = async (file: File): Promise<string> => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to upload file');
+      let errorMessage = 'Failed to upload file';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If not JSON, it might be an HTML error from nginx/server
+        const text = await response.text();
+        if (text.includes('413 Request Entity Too Large')) {
+          errorMessage = 'File is too large for the server configuration (Nginx limit).';
+        } else {
+          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}...`;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
