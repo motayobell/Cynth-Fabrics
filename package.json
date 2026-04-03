@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "start": "tsx server.ts",
+    "dev": "tsx server.js",
+    "start": "node server.js",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
@@ -40,5 +40,8 @@
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
