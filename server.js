@@ -28,15 +28,15 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit
 });
 
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(express.json({ limit: '500mb' }));
+  app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
   // CRITICAL: Health check for Hostinger/Cloud deployment
   app.get('/health', (req, res) => {

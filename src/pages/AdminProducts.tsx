@@ -125,8 +125,8 @@ const AdminProducts = () => {
     if (files && files.length > 0) {
       setIsUploading(true);
       const uploadPromises = Array.from(files).map(async (file) => {
-        if (file.size > 50 * 1024 * 1024) {
-           setSaveError(`File ${file.name} is too large. Please select a file under 50MB.`);
+        if (file.size > 500 * 1024 * 1024) {
+           setSaveError(`File ${file.name} is too large. Please select a file under 500MB.`);
            throw new Error('File too large');
         }
         

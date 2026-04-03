@@ -65,8 +65,8 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 const uploadFile = async (file: File): Promise<string> => {
-  if (file.size > 50 * 1024 * 1024) {
-    throw new Error(`File ${file.name} is too large. Please select a file under 50MB.`);
+  if (file.size > 500 * 1024 * 1024) {
+    throw new Error(`File ${file.name} is too large. Please select a file under 500MB.`);
   }
   
   let fileToUpload: File | Blob = file;
@@ -714,9 +714,9 @@ const AdminContent = () => {
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  // Check size (limit to 50MB for video to avoid browser crash)
-                                  if (file.size > 50 * 1024 * 1024) {
-                                    setSaveMessage("File too large (>50MB)");
+                                  // Check size (limit to 500MB for video to avoid browser crash)
+                                  if (file.size > 500 * 1024 * 1024) {
+                                    setSaveMessage("File too large (>500MB)");
                                     setTimeout(() => setSaveMessage('Save Changes'), 3000);
                                     return;
                                   }
@@ -747,7 +747,7 @@ const AdminContent = () => {
                             />
                           </label>
                         </div>
-                        {item.type === 'video' && <p className="text-[10px] text-gray-400 mt-1">Supported formats: MP4, WebM. Max 50MB.</p>}
+                        {item.type === 'video' && <p className="text-[10px] text-gray-400 mt-1">Supported formats: MP4, WebM. Max 500MB.</p>}
                       </div>
 
                       {item.type === 'video' && (
