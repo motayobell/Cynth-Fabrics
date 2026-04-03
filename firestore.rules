@@ -35,8 +35,18 @@ service cloud.firestore {
 
     // Users
     match /users/{userId} {
-      allow read: if isAdmin(); // Admins can view users
-      allow write: if isAdmin(); // Admins can manage users
+      // Allow users to read their own profile, or admins to read any profile
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      // Allow the initial admin to create their own profile
+      // Or allow an existing admin to create new users
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == userId && request.auth.token.email == "motayobell@gmail.com") ||
+        isAdmin()
+      );
+      
+      // Only admins can update or delete users
+      allow update, delete: if isAdmin();
     }
 
     // Settings

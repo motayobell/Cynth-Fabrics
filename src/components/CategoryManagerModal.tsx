@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2, Edit2, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Edit2, Save, Loader2 } from 'lucide-react';
 import { useCategories, Category, Subcategory } from '../context/CategoryContext';
 
 interface CategoryManagerModalProps {
@@ -15,19 +15,34 @@ export default function CategoryManagerModal({ isOpen, onClose }: CategoryManage
   const [editingSubcatId, setEditingSubcatId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [newSubcatNames, setNewSubcatNames] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Sync local state when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setLocalCategories(categories);
+      setSaveSuccess(false);
     }
   }, [isOpen, categories]);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    await saveCategories(localCategories);
-    onClose();
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      await saveCategories(localCategories);
+      setSaveSuccess(true);
+      // Wait a bit to show success before closing
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (error) {
+      console.error("Error saving categories:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addCategory = () => {
@@ -129,7 +144,7 @@ export default function CategoryManagerModal({ isOpen, onClose }: CategoryManage
               />
               <button
                 onClick={addCategory}
-                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                className="bg-[#f20c92] text-white px-4 py-2 rounded-lg hover:bg-[#f20c92]/90 transition-colors flex items-center gap-2 active:scale-95 shadow-sm"
               >
                 <Plus size={18} /> Add
               </button>
@@ -232,19 +247,40 @@ export default function CategoryManagerModal({ isOpen, onClose }: CategoryManage
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
-          >
-            Save Changes
-          </button>
+        <div className="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+          <div className="flex-1">
+            {saveSuccess && (
+              <span className="text-green-600 font-medium flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                <Save size={18} />
+                Changes saved successfully!
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={isSaving}
+              className="px-6 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium disabled:opacity-50 active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || saveSuccess}
+              className="px-6 py-2 bg-[#f20c92] text-white rounded-lg hover:bg-[#f20c92]/90 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 active:scale-95 shadow-md shadow-[#f20c92]/20 min-w-[140px] justify-center"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Saving...
+                </>
+              ) : saveSuccess ? (
+                'Saved!'
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

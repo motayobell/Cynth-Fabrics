@@ -6,6 +6,7 @@
   --color-deep-brown: #22101b; /* Updated to match design background-dark */
   --color-cream: #f8f5f7; /* Updated to match design background-light */
   --color-brand-pink: #f20c92; /* Updated to match design primary */
+  --color-primary: var(--color-brand-pink);
   
   --font-serif: "Playfair Display", serif;
   --font-sans: "Manrope", sans-serif;
