@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, ShieldCheck, Palette, Home } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -77,7 +77,6 @@ export default function AdminLogin() {
       }
 
       // 2. Check Firestore for added admins
-      const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
       const q = query(collection(db, 'users'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
 
