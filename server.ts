@@ -38,6 +38,11 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // CRITICAL: Health check for Hostinger/Cloud deployment
+  app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+  });
+
   // API Routes Placeholder
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -107,9 +112,17 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is live on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  server.on('error', (err) => {
+    console.error('Server failed to start:', err);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error('Fatal error during startup:', err);
+  process.exit(1);
+});
