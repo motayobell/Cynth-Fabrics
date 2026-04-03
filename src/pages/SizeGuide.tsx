@@ -27,31 +27,31 @@ const SizeGuide = () => {
   };
 
   return (
-    <div className="min-h-screen bg-deep-brown/95 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl bg-deep-brown border border-gold rounded-lg p-8 relative shadow-2xl">
+    <div className="min-h-screen bg-deep-brown/95 flex items-center justify-center p-4 md:p-8">
+      <div className="w-full max-w-4xl bg-deep-brown border border-gold rounded-xl p-6 md:p-12 relative shadow-2xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-gold text-3xl font-serif tracking-wider mb-2">CYNTH FABRICS</h1>
-          <p className="text-gold/70 text-xs tracking-[0.2em] uppercase font-sans">Luxury Nigerian Native Wear</p>
+        <div className="text-center mb-6 md:mb-10">
+          <h1 className="text-gold text-2xl md:text-4xl font-serif tracking-wider mb-2">CYNTH FABRICS</h1>
+          <p className="text-gold/70 text-[10px] md:text-xs tracking-[0.2em] uppercase font-sans">Luxury Nigerian Native Wear</p>
         </div>
 
         {/* Title & Toggle */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-white/10 pb-6">
-          <div>
-            <h2 className="text-white text-2xl font-serif mb-1">Size Guide</h2>
-            <p className="text-white/60 text-sm font-sans">Find your perfect fit for our premium native collections.</p>
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-center mb-8 border-b border-white/10 pb-8 gap-6">
+          <div className="text-center md:text-left">
+            <h2 className="text-white text-2xl md:text-3xl font-serif mb-2">Size Guide</h2>
+            <p className="text-white/60 text-xs md:text-sm font-sans max-w-xs md:max-w-none">Find your perfect fit for our premium native collections.</p>
           </div>
           
-          <div className="mt-4 md:mt-0 flex bg-black/20 rounded p-1 border border-white/10">
+          <div className="flex bg-black/20 rounded-lg p-1 border border-white/10 w-full md:w-auto">
             <button
               onClick={() => setUnit('inches')}
-              className={`px-4 py-1 text-sm rounded transition-colors font-sans ${unit === 'inches' ? 'bg-gold text-deep-brown font-medium' : 'text-white/60 hover:text-white'}`}
+              className={`flex-1 md:flex-none px-6 py-2 text-xs md:text-sm rounded-md transition-all font-sans tracking-widest ${unit === 'inches' ? 'bg-gold text-deep-brown font-bold shadow-lg' : 'text-white/60 hover:text-white'}`}
             >
               INCHES
             </button>
             <button
               onClick={() => setUnit('cm')}
-              className={`px-4 py-1 text-sm rounded transition-colors font-sans ${unit === 'cm' ? 'bg-gold text-deep-brown font-medium' : 'text-white/60 hover:text-white'}`}
+              className={`flex-1 md:flex-none px-6 py-2 text-xs md:text-sm rounded-md transition-all font-sans tracking-widest ${unit === 'cm' ? 'bg-gold text-deep-brown font-bold shadow-lg' : 'text-white/60 hover:text-white'}`}
             >
               CM
             </button>
@@ -59,23 +59,23 @@ const SizeGuide = () => {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto mb-12">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto mb-10 -mx-6 px-6 md:mx-0 md:px-0 no-scrollbar">
+          <table className="w-full text-left min-w-[500px]">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="py-4 text-gold text-xs uppercase tracking-wider font-medium font-sans">Size</th>
-                <th className="py-4 text-gold text-xs uppercase tracking-wider font-medium font-sans">Chest ({unit === 'inches' ? 'IN' : 'CM'})</th>
-                <th className="py-4 text-gold text-xs uppercase tracking-wider font-medium font-sans">Shoulder ({unit === 'inches' ? 'IN' : 'CM'})</th>
-                <th className="py-4 text-gold text-xs uppercase tracking-wider font-medium font-sans">Length ({unit === 'inches' ? 'IN' : 'CM'})</th>
+                <th className="py-4 text-gold text-[10px] md:text-xs uppercase tracking-wider font-bold font-sans">Size</th>
+                <th className="py-4 text-gold text-[10px] md:text-xs uppercase tracking-wider font-bold font-sans">Chest ({unit === 'inches' ? 'IN' : 'CM'})</th>
+                <th className="py-4 text-gold text-[10px] md:text-xs uppercase tracking-wider font-bold font-sans">Shoulder ({unit === 'inches' ? 'IN' : 'CM'})</th>
+                <th className="py-4 text-gold text-[10px] md:text-xs uppercase tracking-wider font-bold font-sans">Length ({unit === 'inches' ? 'IN' : 'CM'})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {sizes.map((size, index) => (
                 <tr key={index} className="hover:bg-white/5 transition-colors">
-                  <td className="py-4 text-white font-medium font-sans">{size.name}</td>
-                  <td className="py-4 text-white/80 font-sans">{getValue(size.chest)}</td>
-                  <td className="py-4 text-white/80 font-sans">{getValue(size.shoulder)}</td>
-                  <td className="py-4 text-white/80 font-sans">{getValue(size.length)}</td>
+                  <td className="py-4 text-white font-bold font-sans text-sm md:text-base">{size.name}</td>
+                  <td className="py-4 text-white/80 font-sans text-sm md:text-base">{getValue(size.chest)}</td>
+                  <td className="py-4 text-white/80 font-sans text-sm md:text-base">{getValue(size.shoulder)}</td>
+                  <td className="py-4 text-white/80 font-sans text-sm md:text-base">{getValue(size.length)}</td>
                 </tr>
               ))}
             </tbody>
@@ -83,15 +83,15 @@ const SizeGuide = () => {
         </div>
 
         {/* How to Measure */}
-        <div className="mb-12">
-          <h3 className="text-gold text-sm uppercase tracking-wider font-medium mb-6 border-b border-white/10 pb-2 inline-block font-sans">
+        <div className="mb-10">
+          <h3 className="text-gold text-[10px] md:text-xs uppercase tracking-widest font-bold mb-8 border-b border-white/10 pb-2 inline-block font-sans">
             How to Measure
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12">
             {/* Left Column - Diagram & Instructions */}
-            <div className="flex gap-6">
-              <div className="w-24 h-32 border border-white/10 relative flex-shrink-0 bg-black/20">
+            <div className="flex gap-5 md:gap-6">
+              <div className="w-20 h-28 md:w-24 md:h-32 border border-white/10 relative flex-shrink-0 bg-black/20 rounded-lg overflow-hidden">
                 {/* Simplified SVG representation of torso for Shoulder/Chest */}
                 <svg viewBox="0 0 100 130" className="w-full h-full stroke-gold fill-none" strokeWidth="1">
                   <path d="M20,30 L80,30" className="opacity-50" /> {/* Shoulder line */}
@@ -104,15 +104,15 @@ const SizeGuide = () => {
                 </svg>
               </div>
               <div>
-                <div className="mb-6">
-                  <h4 className="text-gold text-xs font-bold mb-1 font-sans">1. SHOULDER</h4>
-                  <p className="text-white/60 text-xs leading-relaxed font-sans">
+                <div className="mb-5">
+                  <h4 className="text-gold text-[10px] md:text-xs font-black mb-1 font-sans uppercase tracking-widest">1. SHOULDER</h4>
+                  <p className="text-white/60 text-[10px] md:text-xs leading-relaxed font-sans">
                     Measure from the tip of one shoulder across the back to the tip of the other.
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-gold text-xs font-bold mb-1 font-sans">2. CHEST</h4>
-                  <p className="text-white/60 text-xs leading-relaxed font-sans">
+                  <h4 className="text-gold text-[10px] md:text-xs font-black mb-1 font-sans uppercase tracking-widest">2. CHEST</h4>
+                  <p className="text-white/60 text-[10px] md:text-xs leading-relaxed font-sans">
                     Wrap tape around the fullest part of your chest, keeping it level under arms.
                   </p>
                 </div>
@@ -120,8 +120,8 @@ const SizeGuide = () => {
             </div>
 
             {/* Right Column - Diagram & Instructions */}
-            <div className="flex gap-6">
-              <div className="w-24 h-32 border border-white/10 relative flex-shrink-0 bg-black/20">
+            <div className="flex gap-5 md:gap-6">
+              <div className="w-20 h-28 md:w-24 md:h-32 border border-white/10 relative flex-shrink-0 bg-black/20 rounded-lg overflow-hidden">
                 {/* Simplified SVG representation of torso for Length */}
                 <svg viewBox="0 0 100 130" className="w-full h-full stroke-gold fill-none" strokeWidth="1">
                   <path d="M30,20 Q50,30 70,20 L80,30 L80,80 L70,120 L30,120 L20,80 L20,30 Z" className="opacity-30" />
@@ -133,15 +133,15 @@ const SizeGuide = () => {
                 </svg>
               </div>
               <div>
-                <div className="mb-6">
-                  <h4 className="text-gold text-xs font-bold mb-1 font-sans">3. LENGTH</h4>
-                  <p className="text-white/60 text-xs leading-relaxed font-sans">
+                <div className="mb-5">
+                  <h4 className="text-gold text-[10px] md:text-xs font-black mb-1 font-sans uppercase tracking-widest">3. LENGTH</h4>
+                  <p className="text-white/60 text-[10px] md:text-xs leading-relaxed font-sans">
                     Measure from the highest point of your shoulder down to your desired length.
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-gold text-xs font-bold mb-1 font-sans">NOTE</h4>
-                  <p className="text-white/60 text-xs leading-relaxed italic font-sans">
+                  <h4 className="text-gold text-[10px] md:text-xs font-black mb-1 font-sans uppercase tracking-widest">NOTE</h4>
+                  <p className="text-white/60 text-[10px] md:text-xs leading-relaxed italic font-sans">
                     For a more relaxed fit, we recommend adding 1-2 inches to your body measurements.
                   </p>
                 </div>
@@ -151,10 +151,10 @@ const SizeGuide = () => {
         </div>
 
         {/* Footer Button */}
-        <div className="text-center">
+        <div className="text-center pt-4">
           <button
             onClick={() => navigate(-1)}
-            className="bg-brand-pink hover:bg-brand-pink/90 text-white px-12 py-3 rounded-full text-sm font-bold tracking-wider transition-colors shadow-lg font-sans"
+            className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white px-12 py-4 rounded-full text-xs md:text-sm font-black tracking-[0.2em] transition-all shadow-xl hover:scale-105 active:scale-95 font-sans uppercase"
           >
             CLOSE GUIDE
           </button>

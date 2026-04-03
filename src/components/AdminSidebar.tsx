@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,15 +9,19 @@ import {
   Package,
   Shield,
   FileText,
-  LogOut
+  LogOut,
+  Menu,
+  X
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [user, setUser] = React.useState({ name: 'Cynthia A.', role: 'Super Admin' });
+  const [user, setUser] = useState({ name: 'Cynthia A.', role: 'Super Admin' });
+  const [isOpen, setIsOpen] = useState(false);
 
   React.useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
@@ -40,18 +44,50 @@ const AdminSidebar = () => {
     navigate('/admin/login');
   };
 
+  const toggleSidebar = () => setIsOpen(!isOpen);
+
+  const navItems = [
+    { to: "/admin/dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
+    { to: "/admin/orders", icon: <ShoppingBag size={20} />, label: "Orders" },
+    { to: "/admin/products", icon: <Package size={20} />, label: "Products" },
+    { to: "/admin/content", icon: <FileText size={20} />, label: "Content Manager" },
+    { to: "/admin/logo", icon: <Settings size={20} />, label: "Store Logo" },
+    { to: "/admin/users", icon: <Shield size={20} />, label: "Admin Users" },
+    { to: "/admin/settings", icon: <Settings size={20} />, label: "Settings" },
+  ];
+
   return (
     <>
-      {/* Mobile Logout Button */}
-      <button 
-        onClick={handleLogout}
-        className="md:hidden fixed top-4 right-4 z-50 bg-white p-2.5 rounded-full shadow-md text-gray-600 hover:text-red-500 border border-gray-200"
-        title="Logout"
-      >
-        <LogOut size={20} />
-      </button>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-6">
+        <h1 className="font-serif text-xl text-yellow-600 font-bold tracking-tighter">CYNTH ADMIN</h1>
+        <button 
+          onClick={toggleSidebar}
+          className="p-2 text-gray-600 hover:text-primary transition-colors"
+        >
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
 
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 hidden md:flex flex-col">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={toggleSidebar}
+            className="fixed inset-0 bg-black/50 z-[70] md:hidden backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar Content */}
+      <aside className={`
+        fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-[80] 
+        transition-transform duration-300 ease-in-out flex flex-col
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         <div className="p-8 border-b border-gray-200 flex justify-between items-start">
           <h1 className="font-serif text-2xl text-yellow-600 font-bold tracking-tighter">CYNTH<br/>ADMIN</h1>
           <button 
@@ -63,76 +99,39 @@ const AdminSidebar = () => {
           </button>
         </div>
       
-      <nav className="flex-1 p-6 space-y-2">
-        <NavItem 
-          to="/admin/dashboard" 
-          icon={<LayoutDashboard size={20} />} 
-          label="Dashboard" 
-          active={location.pathname === '/admin/dashboard'} 
-        />
-        <NavItem 
-          to="/admin/orders" 
-          icon={<ShoppingBag size={20} />} 
-          label="Orders" 
-          active={location.pathname === '/admin/orders'} 
-        />
-        <NavItem 
-          to="/admin/products" 
-          icon={<Package size={20} />} 
-          label="Products" 
-          active={location.pathname === '/admin/products'} 
-        />
-        <NavItem 
-          to="/admin/content" 
-          icon={<FileText size={20} />} 
-          label="Content Manager" 
-          active={location.pathname === '/admin/content'} 
-        />
-        <NavItem 
-          to="/admin/customers" 
-          icon={<Users size={20} />} 
-          label="Customers" 
-          active={location.pathname === '/admin/customers'} 
-        />
-        <NavItem 
-          to="/admin/users" 
-          icon={<Shield size={20} />} 
-          label="Admin Users" 
-          active={location.pathname === '/admin/users'} 
-        />
-        <NavItem 
-          to="/admin/analytics" 
-          icon={<TrendingUp size={20} />} 
-          label="Analytics" 
-          active={location.pathname === '/admin/analytics'} 
-        />
-        <NavItem 
-          to="/admin/settings" 
-          icon={<Settings size={20} />} 
-          label="Settings" 
-          active={location.pathname === '/admin/settings'} 
-        />
-      </nav>
+        <nav className="flex-1 p-6 space-y-2 overflow-y-auto no-scrollbar">
+          {navItems.map((item) => (
+            <NavItem 
+              key={item.to}
+              to={item.to} 
+              icon={item.icon} 
+              label={item.label} 
+              active={location.pathname === item.to} 
+              onClick={() => setIsOpen(false)}
+            />
+          ))}
+        </nav>
 
-      <div className="p-6 border-t border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#f20c92]/10 flex items-center justify-center text-[#f20c92] font-bold">
-            {user.name.charAt(0)}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900">{user.name}</p>
-            <p className="text-xs text-gray-500">{user.role}</p>
+        <div className="p-6 border-t border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#f20c92]/10 flex items-center justify-center text-[#f20c92] font-bold">
+              {user.name.charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">{user.name}</p>
+              <p className="text-xs text-gray-500">{user.role}</p>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 };
 
-const NavItem = ({ icon, label, active = false, to }: { icon: React.ReactNode, label: string, active?: boolean, to: string }) => (
+const NavItem = ({ icon, label, active = false, to, onClick }: { icon: React.ReactNode, label: string, active?: boolean, to: string, onClick?: () => void }) => (
   <Link 
     to={to} 
+    onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-[#f20c92] text-white shadow-md shadow-[#f20c92]/20' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}
   >
     {icon}

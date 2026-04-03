@@ -43,7 +43,8 @@ export function StorySection() {
           if (storySection?.content) {
             setContent(prev => ({
               ...prev,
-              ...storySection.content
+              ...storySection.content,
+              mediaItems: storySection.content.mediaItems || (storySection.content.image ? [{ id: 1, type: 'image', src: storySection.content.image, alt: 'Image' }] : prev.mediaItems)
             }));
           }
         }
@@ -57,35 +58,35 @@ export function StorySection() {
   return (
     <section className="py-24 bg-cream overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col lg:flex-row items-center gap-16">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           {/* Image Side */}
-          <div className="lg:w-1/2 relative">
-            <div className="absolute -top-6 -left-6 w-full h-full border-t-2 border-l-2 border-brand-pink z-0"></div>
-            <div className="relative z-10 w-full h-[500px] rounded-sm shadow-xl bg-gray-200">
+          <div className="w-full lg:w-1/2 relative">
+            <div className="absolute -top-4 -left-4 md:-top-6 md:-left-6 w-full h-full border-t-2 border-l-2 border-brand-pink z-0"></div>
+            <div className="relative z-10 w-full h-[350px] md:h-[500px] rounded-sm shadow-xl bg-gray-200">
               <MediaCarousel 
                 items={content.mediaItems} 
                 className="w-full h-full rounded-sm"
               />
             </div>
-            <div className="absolute -bottom-6 -right-6 w-32 h-32 border-b-2 border-r-2 border-brand-pink z-20"></div>
+            <div className="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 w-24 h-24 md:w-32 md:h-32 border-b-2 border-r-2 border-brand-pink z-20"></div>
           </div>
 
           {/* Text Side */}
-          <div className="lg:w-1/2 space-y-8">
-            <span className="text-brand-pink font-bold uppercase tracking-[0.4em] text-xs">{content.smallHeading}</span>
-            <h2 className="font-serif text-4xl md:text-5xl text-deep-brown leading-tight">{content.heading}</h2>
-            <p className="text-stone-600 text-lg leading-relaxed font-light">
+          <div className="w-full lg:w-1/2 space-y-6 md:space-y-8 text-center lg:text-left">
+            <span className="text-brand-pink font-bold uppercase tracking-[0.4em] text-[10px] md:text-xs">{content.smallHeading}</span>
+            <h2 className="font-serif text-3xl md:text-5xl text-deep-brown leading-tight">{content.heading}</h2>
+            <p className="text-stone-600 text-base md:text-lg leading-relaxed font-light">
               {content.text1}
             </p>
             {content.text2 && (
-              <p className="text-stone-600 text-lg leading-relaxed font-light">
+              <p className="text-stone-600 text-base md:text-lg leading-relaxed font-light">
                 {content.text2}
               </p>
             )}
-            <div className="pt-4">
+            <div className="pt-4 flex justify-center lg:justify-start">
               <Link to={content.linkUrl} className="inline-flex items-center space-x-4 group">
-                <span className="w-12 h-[1px] bg-brand-pink group-hover:w-20 transition-all duration-300"></span>
-                <span className="uppercase tracking-widest text-sm font-bold text-brand-pink">{content.linkText}</span>
+                <span className="w-8 md:w-12 h-[1px] bg-brand-pink group-hover:w-16 md:group-hover:w-20 transition-all duration-300"></span>
+                <span className="uppercase tracking-widest text-xs md:text-sm font-bold text-brand-pink">{content.linkText}</span>
               </Link>
             </div>
           </div>

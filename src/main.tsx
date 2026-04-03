@@ -4,13 +4,16 @@ import App from './App.tsx';
 import './index.css';
 import { ProductProvider } from './context/ProductContext';
 import { OrderProvider } from './context/OrderContext';
+import { CategoryProvider } from './context/CategoryContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ProductProvider>
-      <OrderProvider>
-        <App />
-      </OrderProvider>
-    </ProductProvider>
+    <CategoryProvider>
+      <ProductProvider>
+        <OrderProvider>
+          <App />
+        </OrderProvider>
+      </ProductProvider>
+    </CategoryProvider>
   </StrictMode>,
 );

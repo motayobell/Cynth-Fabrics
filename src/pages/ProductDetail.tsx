@@ -52,17 +52,17 @@ export default function ProductDetail() {
         <span className="text-stone-600 mx-1">{product.name}</span>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 pb-24">
-        <div className="flex flex-col lg:flex-row gap-12">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-24">
+        <div className="flex flex-col lg:flex-row gap-8 md:gap-12">
           {/* Product Images */}
-          <div className="lg:w-3/5 flex gap-4">
+          <div className="w-full lg:w-3/5 flex flex-col-reverse md:flex-row gap-4">
             {/* Thumbnails */}
-            <div className="flex flex-col gap-4 w-20 flex-shrink-0">
+            <div className="flex flex-row md:flex-col gap-3 md:gap-4 overflow-x-auto md:overflow-y-auto md:w-20 flex-shrink-0 no-scrollbar">
               {productImages.map((img, i) => (
                 <div 
                   key={i} 
                   onClick={() => setSelectedImage(img)}
-                  className={`aspect-square bg-stone-100 rounded cursor-pointer overflow-hidden transition-all ${selectedImage === img ? 'ring-2 ring-brand-pink' : 'hover:ring-1 hover:ring-brand-pink'}`}
+                  className={`w-16 h-16 md:w-full aspect-square bg-stone-100 rounded cursor-pointer overflow-hidden flex-shrink-0 transition-all ${selectedImage === img ? 'ring-2 ring-brand-pink' : 'hover:ring-1 hover:ring-brand-pink'}`}
                 >
                   <img 
                     src={img} 
@@ -83,37 +83,37 @@ export default function ProductDetail() {
                 referrerPolicy="no-referrer"
               />
               <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:text-brand-pink transition-colors">
-                  <Search className="w-4 h-4" />
+                <button className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:text-brand-pink transition-colors">
+                  <Search className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </button>
-                <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:text-brand-pink transition-colors">
-                  <Heart className="w-4 h-4" />
+                <button className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:text-brand-pink transition-colors">
+                  <Heart className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </button>
               </div>
             </div>
           </div>
 
           {/* Product Info */}
-          <div className="lg:w-2/5 pt-4">
-            <h1 className="font-serif text-4xl lg:text-5xl text-deep-brown mb-4 leading-tight">
+          <div className="w-full lg:w-2/5 pt-0 md:pt-4">
+            <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-deep-brown mb-3 md:mb-4 leading-tight">
               {product.name}
             </h1>
             
-            <div className="flex items-center gap-4 mb-8">
-              <span className="text-2xl text-brand-pink font-medium">{displayPrice}</span>
+            <div className="flex items-center gap-4 mb-6 md:mb-8">
+              <span className="text-xl md:text-2xl text-brand-pink font-medium">{displayPrice}</span>
               {product.tag && (
-                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${product.tagColor ? product.tagColor.replace('bg-white', 'bg-brand-pink/10').replace('text-black', 'text-brand-pink') : 'bg-brand-pink/10 text-brand-pink'}`}>
+                <span className={`text-[8px] md:text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${product.tagColor ? product.tagColor.replace('bg-white', 'bg-brand-pink/10').replace('text-black', 'text-brand-pink') : 'bg-brand-pink/10 text-brand-pink'}`}>
                   {product.tag}
                 </span>
               )}
             </div>
 
-            <p className="text-stone-500 text-sm leading-relaxed mb-8 font-light">
+            <p className="text-stone-500 text-sm leading-relaxed mb-6 md:mb-8 font-light">
               {product.description || "Meticulously crafted for the modern visionary, this set blends traditional Nigerian silhouettes with world-class craftsmanship. Made from ultra-fine materials, it features hidden placket detailing and hand-finished embroidery."}
             </p>
 
             {/* Size Selector */}
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold uppercase tracking-widest text-deep-brown">Select Size</span>
                 <button className="text-[10px] text-brand-pink uppercase tracking-widest font-bold hover:underline">Size Guide</button>
@@ -136,7 +136,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Quantity Selector */}
-            <div className="mb-10">
+            <div className="mb-8 md:mb-10">
               <span className="text-xs font-bold uppercase tracking-widest text-deep-brown mb-3 block">Quantity</span>
               <div className="flex items-center border border-stone-200 rounded w-max">
                 <button 
@@ -169,7 +169,7 @@ export default function ProductDetail() {
             >
               Order Now <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-[10px] text-center text-stone-400 uppercase tracking-widest mb-10">Global Delivery in 7-14 Business Days</p>
+            <p className="text-[10px] text-center text-stone-400 uppercase tracking-widest mb-8 md:mb-10">Global Delivery in 7-14 Business Days</p>
 
             {/* Accordions / Features */}
             <div className="border-t border-stone-200">
@@ -190,7 +190,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-4 mt-10 pt-8 border-t border-stone-100">
+            <div className="grid grid-cols-3 gap-4 mt-8 md:mt-10 pt-8 border-t border-stone-100">
               <div className="flex flex-col items-center text-center gap-2">
                 <CheckCircle className="w-5 h-5 text-stone-400" strokeWidth={1.5} />
                 <span className="text-[9px] font-bold uppercase tracking-widest text-stone-500">Authentic Wool</span>

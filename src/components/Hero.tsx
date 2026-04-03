@@ -77,21 +77,21 @@ export function Hero() {
       <HeroCarousel items={items} interval={6000} />
 
       {/* Content */}
-      <div className="relative z-20 text-center px-4 max-w-4xl mt-16">
-        <span className="text-brand-pink tracking-[0.3em] uppercase text-xs font-bold mb-4 block">
+      <div className="relative z-20 text-center px-6 max-w-4xl mt-16">
+        <span className="text-brand-pink tracking-[0.3em] uppercase text-[10px] md:text-xs font-bold mb-4 block">
           {content.smallHeading}
         </span>
-        <h2 className="font-serif text-6xl md:text-7xl lg:text-8xl text-white mb-6 leading-none whitespace-pre-line">
+        <h2 className="font-serif text-5xl md:text-7xl lg:text-8xl text-white mb-6 leading-[1.1] md:leading-none whitespace-pre-line">
           {content.heading}
         </h2>
-        <p className="text-stone-200 text-lg mb-8 max-w-2xl mx-auto font-light leading-relaxed whitespace-pre-line">
+        <p className="text-stone-200 text-base md:text-lg mb-8 max-w-2xl mx-auto font-light leading-relaxed whitespace-pre-line">
           {content.subheading}
         </p>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-          <Link to={content.buttonLink} className="bg-brand-pink text-white px-10 py-4 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-brand-pink transition-all text-xs w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0">
+          <Link to={content.buttonLink} className="bg-brand-pink text-white px-10 py-4 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-brand-pink transition-all text-xs w-full sm:w-auto">
             {content.buttonText}
           </Link>
-          <Link to={content.button2Link} className="border border-white/40 text-white backdrop-blur-sm px-10 py-4 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all text-xs w-full md:w-auto">
+          <Link to={content.button2Link} className="border border-white/40 text-white backdrop-blur-sm px-10 py-4 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all text-xs w-full sm:w-auto">
             {content.button2Text}
           </Link>
         </div>

@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export interface Product {
   id: string | number;
   name: string;
   category?: string;
+  subcategory?: string;
   price?: number;
   currency?: string;
   stock?: number;
@@ -52,6 +53,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setProducts(productsData);
       }
     }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'products');
       // Fallback to local data if offline or permission denied
       if (products.length === 0) {
         setProducts(INITIAL_PRODUCTS);
@@ -86,8 +88,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createdAt: serverTimestamp()
       });
     } catch (error) {
-      console.error("Error adding product:", error);
-      throw error;
+      handleFirestoreError(error, OperationType.CREATE, 'products');
     }
   };
 
@@ -98,8 +99,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...updatedProduct
       });
     } catch (error) {
-      console.error("Error updating product:", error);
-      throw error;
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     }
   };
 
@@ -108,8 +108,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const docRef = doc(db, 'products', String(id));
       await deleteDoc(docRef);
     } catch (error) {
-      console.error("Error deleting product:", error);
-      throw error;
+      handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
     }
   };
 

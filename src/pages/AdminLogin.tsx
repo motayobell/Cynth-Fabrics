@@ -50,7 +50,7 @@ export default function AdminLogin() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -58,27 +58,68 @@ export default function AdminLogin() {
       return;
     }
 
-    // Default admin credentials fallback for testing if needed
-    if (email === 'admin@cynthfabrics.com' && password === 'admin123') {
-      const user = {
-        name: 'Admin User',
-        email: email,
-        role: 'Super Admin',
-        avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=random'
-      };
-      
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      navigate('/admin/dashboard');
-    } else {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 1. Check hardcoded fallback for testing
+      if (email === 'admin@cynthfabrics.com' && password === 'admin123') {
+        const user = {
+          name: 'Admin User',
+          email: email,
+          role: 'Super Admin',
+          avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=random'
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        navigate('/admin/dashboard');
+        return;
+      }
+
+      // 2. Check Firestore for added admins
+      const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        if (userData.password === password) {
+          // Success!
+          const user = {
+            id: userDoc.id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role,
+            avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.name}&background=random`
+          };
+
+          // Update last login
+          await updateDoc(doc(db, 'users', userDoc.id), {
+            lastLogin: new Date().toLocaleString()
+          });
+
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          navigate('/admin/dashboard');
+          return;
+        }
+      }
+
       setError('Invalid email or password. Please use Google Sign-In or default credentials.');
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 font-sans bg-gray-50 text-gray-900 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 font-sans bg-gray-50 text-gray-900 relative overflow-hidden">
       {/* Home Button */}
-      <Link to="/" className="absolute top-6 left-6 flex items-center gap-2 text-gray-600 hover:text-[#f20da6] transition-colors font-medium z-20 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200">
-        <Home size={18} />
+      <Link to="/" className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center gap-2 text-gray-600 hover:text-[#f20da6] transition-colors font-medium z-20 bg-white px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-sm border border-gray-200 text-sm">
+        <Home size={16} className="md:w-[18px] md:h-[18px]" />
         Home
       </Link>
 
@@ -91,34 +132,34 @@ export default function AdminLogin() {
       {/* Main Container */}
       <div className="w-full max-w-md z-10">
         {/* Logo Section */}
-        <div className="flex flex-col items-center mb-12">
-          <div className="relative w-32 h-32 mb-4">
+        <div className="flex flex-col items-center mb-8 md:mb-12">
+          <div className="relative w-24 h-24 md:w-32 md:h-32 mb-4">
             {/* Logo */}
             <img 
-              src="https://lh3.googleusercontent.com/d/1b3Vq6YHV6GABHAnwCNW07JW1hrTNnlYZ" 
+              src="/logo.png" 
               alt="Cynth Fabrics Logo" 
               className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(242,13,166,0.4)]"
               referrerPolicy="no-referrer"
             />
           </div>
-          <h1 className="text-3xl font-bold tracking-[0.2em] uppercase text-center">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-[0.2em] uppercase text-center">
             <span className="bg-gradient-to-r from-[#B89000] via-[#D4AF37] to-[#B89000] bg-clip-text text-transparent">
               Cynth Fabrics
             </span>
           </h1>
-          <p className="text-[#B89000]/80 text-xs tracking-widest mt-2 uppercase font-medium">
+          <p className="text-[#B89000]/80 text-[10px] md:text-xs tracking-widest mt-2 uppercase font-medium">
             Luxury Nigerian Fashion Admin
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-8 shadow-xl border border-gray-200 relative overflow-hidden group">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 md:p-8 shadow-xl border border-gray-200 relative overflow-hidden group">
           {/* Subtle interior border accent */}
           <div className="absolute inset-0 border border-gray-100 rounded-xl pointer-events-none"></div>
           
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900">Admin Access</h2>
-            <p className="text-gray-500 text-sm">Secure login to your brand dashboard</p>
+          <div className="mb-6 md:mb-8">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Admin Access</h2>
+            <p className="text-gray-500 text-xs md:text-sm">Secure login to your brand dashboard</p>
           </div>
 
           {error && (
@@ -223,9 +264,12 @@ export default function AdminLogin() {
 
           {/* Forgot Password Link */}
           <div className="mt-8 text-center">
-            <a href="#" className="text-xs font-medium text-gray-500 hover:text-[#f20da6] transition-colors duration-200 decoration-gray-300 underline underline-offset-4">
+            <button 
+              onClick={() => setError('Please contact the Super Admin to reset your temporary password.')}
+              className="text-xs font-medium text-gray-500 hover:text-[#f20da6] transition-colors duration-200 decoration-gray-300 underline underline-offset-4"
+            >
               Forgot Password?
-            </a>
+            </button>
           </div>
         </div>
 

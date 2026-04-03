@@ -49,7 +49,7 @@ const compressImage = (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
         
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
         resolve(dataUrl);
       };
       img.onerror = () => {
@@ -65,24 +65,43 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 const uploadFile = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (file.size > 5 * 1024 * 1024) {
-      reject(new Error(`File ${file.name} is too large. Please select a file under 5MB.`));
-      return;
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error(`File ${file.name} is too large. Please select a file under 50MB.`);
+  }
+  
+  let fileToUpload: File | Blob = file;
+  
+  // Compress image before uploading to save bandwidth
+  if (file.type.startsWith('image/')) {
+    try {
+      const base64Str = await compressImage(file);
+      const res = await fetch(base64Str);
+      fileToUpload = await res.blob();
+    } catch (err) {
+      console.error('Compression failed, uploading original', err);
     }
-    if (file.type.startsWith('image/')) {
-      compressImage(file)
-        .then(resolve)
-        .catch(reject);
-    } else {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  }
+
+  const formData = new FormData();
+  formData.append('media', fileToUpload);
+
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload file');
     }
-  });
+
+    const data = await response.json();
+    return data.url;
+  } catch (error: any) {
+    console.error("Upload error:", error);
+    throw new Error(error.message || "Failed to upload file");
+  }
 };
 
 interface ContentSection {
@@ -465,7 +484,7 @@ const initialPages: PageContent[] = [
 ];
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 
 const AdminContent = () => {
   const [pages, setPages] = useState<PageContent[]>(initialPages);
@@ -506,21 +525,40 @@ const AdminContent = () => {
       if (!auth.currentUser) {
         throw new Error('Not authenticated with database');
       }
+
+      let pagesJson = JSON.stringify(pages);
+      
+      if (pagesJson.includes('data:image/') && pagesJson.length > 900000) {
+        throw new Error('Some images are still saved in the old format and are too large. Please replace all old images with new uploads before saving.');
+      }
+
+      const finalPages = JSON.parse(pagesJson);
+
       const docRef = doc(db, 'content', 'siteContent');
-      await setDoc(docRef, { pages });
-      localStorage.setItem('siteContent', JSON.stringify(pages)); // Keep local backup
+      try {
+        await setDoc(docRef, { pages: finalPages });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, 'content/siteContent');
+      }
+      localStorage.setItem('siteContent', pagesJson); // Keep local backup
+      setPages(finalPages);
       setIsSaving(false);
       setSaveMessage('Saved!');
     } catch (error: any) {
       console.error('Error saving content:', error);
       setIsSaving(false);
-      setSaveMessage(error.message === 'Not authenticated with database' ? 'Login with Google to save' : 'Error saving');
+      let errorMessage = error.message || 'Error saving';
+      try {
+        const parsed = JSON.parse(errorMessage);
+        if (parsed.error) errorMessage = parsed.error;
+      } catch (e) {}
+      setSaveMessage(errorMessage === 'Not authenticated with database' ? 'Login with Google to save' : errorMessage);
     }
     
-    // Reset message after 2 seconds
+    // Reset message after 3 seconds
     setTimeout(() => {
       setSaveMessage('Save Changes');
-    }, 2000);
+    }, 3000);
   };
 
   const updateSectionContent = (sectionId: string, newContent: any) => {
@@ -542,19 +580,19 @@ const AdminContent = () => {
 
   const renderInput = (label: string, value: string, key: string, sectionId: string, type: 'text' | 'textarea' = 'text') => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">{label}</label>
+      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 capitalize">{label}</label>
       {type === 'textarea' ? (
         <textarea 
           value={value || ''}
           onChange={(e) => updateSectionContent(sectionId, { [key]: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none h-24"
+          className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none h-24 text-sm"
         />
       ) : (
         <input 
           type="text" 
           value={value || ''}
           onChange={(e) => updateSectionContent(sectionId, { [key]: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none"
+          className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none text-sm"
         />
       )}
     </div>
@@ -862,17 +900,18 @@ const AdminContent = () => {
              {renderInput('Link Text', section.content.linkText, 'linkText', section.id)}
              {renderInput('Link URL', section.content.linkUrl, 'linkUrl', section.id)}
              
-             {section.content.mediaItems !== undefined ? (
-              <div className="mt-6 border-t pt-6">
-                <h4 className="font-medium text-gray-900 mb-4">Carousel Media Items</h4>
-                <div className="space-y-4">
-                  {section.content.mediaItems?.map((item: any, index: number) => (
-                    <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
-                      <button 
-                        onClick={() => {
-                          const newItems = section.content.mediaItems.filter((_: any, i: number) => i !== index);
-                          updateSectionContent(section.id, { mediaItems: newItems });
-                        }}
+             {/* Media Items Carousel */}
+             <div className="mt-6 border-t pt-6">
+               <h4 className="font-medium text-gray-900 mb-4">Carousel Media Items</h4>
+               <div className="space-y-4">
+                 {(section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : [])).map((item: any, index: number) => (
+                   <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                     <button 
+                       onClick={() => {
+                         const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                         const newItems = currentItems.filter((_: any, i: number) => i !== index);
+                         updateSectionContent(section.id, { mediaItems: newItems, image: null });
+                       }}
                         className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
                       >
                         <Trash2 size={16} />
@@ -884,9 +923,10 @@ const AdminContent = () => {
                           <select
                             value={item.type}
                             onChange={(e) => {
-                              const newItems = [...section.content.mediaItems];
+                              const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                              const newItems = [...currentItems];
                               newItems[index] = { ...item, type: e.target.value };
-                              updateSectionContent(section.id, { mediaItems: newItems });
+                              updateSectionContent(section.id, { mediaItems: newItems, image: null });
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
                           >
@@ -902,9 +942,10 @@ const AdminContent = () => {
                               type="text" 
                               value={item.src}
                               onChange={(e) => {
-                                const newItems = [...section.content.mediaItems];
+                                const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                                const newItems = [...currentItems];
                                 newItems[index] = { ...item, src: e.target.value };
-                                updateSectionContent(section.id, { mediaItems: newItems });
+                                updateSectionContent(section.id, { mediaItems: newItems, image: null });
                               }}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
                               placeholder={item.type === 'video' ? "Video URL" : "Image URL"}
@@ -921,9 +962,10 @@ const AdminContent = () => {
                                     setSaveMessage("Uploading...");
                                     try {
                                       const url = await uploadFile(file);
-                                      const newItems = [...section.content.mediaItems];
+                                      const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                                      const newItems = [...currentItems];
                                       newItems[index] = { ...item, src: url };
-                                      updateSectionContent(section.id, { mediaItems: newItems });
+                                      updateSectionContent(section.id, { mediaItems: newItems, image: null });
                                       setSaveMessage("Uploaded!");
                                       setTimeout(() => setSaveMessage('Save Changes'), 2000);
                                     } catch (err: any) {
@@ -964,9 +1006,10 @@ const AdminContent = () => {
                                       setSaveMessage("Uploading...");
                                       try {
                                         const url = await uploadFile(file);
-                                        const newItems = [...section.content.mediaItems];
+                                        const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                                        const newItems = [...currentItems];
                                         newItems[index] = { ...item, poster: url };
-                                        updateSectionContent(section.id, { mediaItems: newItems });
+                                        updateSectionContent(section.id, { mediaItems: newItems, image: null });
                                         setSaveMessage("Uploaded!");
                                         setTimeout(() => setSaveMessage('Save Changes'), 2000);
                                       } catch (err: any) {
@@ -988,9 +1031,10 @@ const AdminContent = () => {
                               type="text" 
                               value={item.alt || ''}
                               onChange={(e) => {
-                                const newItems = [...section.content.mediaItems];
+                                const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                                const newItems = [...currentItems];
                                 newItems[index] = { ...item, alt: e.target.value };
-                                updateSectionContent(section.id, { mediaItems: newItems });
+                                updateSectionContent(section.id, { mediaItems: newItems, image: null });
                               }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
                             />
@@ -1016,54 +1060,15 @@ const AdminContent = () => {
                 
                 <button 
                   onClick={() => {
-                    const newItems = [...(section.content.mediaItems || []), { id: Date.now(), type: 'image', src: '', alt: '' }];
-                    updateSectionContent(section.id, { mediaItems: newItems });
+                    const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                    const newItems = [...currentItems, { id: Date.now(), type: 'image', src: '', alt: '' }];
+                    updateSectionContent(section.id, { mediaItems: newItems, image: null });
                   }}
                   className="mt-4 flex items-center gap-2 text-sm font-medium text-[#f20c92] hover:text-[#d00a7d]"
                 >
                   <Plus size={16} /> Add Media Item
                 </button>
               </div>
-             ) : (
-             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={section.content.image || ''}
-                  onChange={(e) => updateSectionContent(section.id, { image: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none"
-                />
-                <label className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center">
-                  <Upload size={20} />
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setSaveMessage("Uploading...");
-                        uploadFile(file).then((url) => {
-                          updateSectionContent(section.id, { image: url });
-                          setSaveMessage("Uploaded!");
-                          setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                        }).catch((err: any) => {
-                          setSaveMessage(err.message || "Upload Failed");
-                          setTimeout(() => setSaveMessage('Save Changes'), 3000);
-                        });
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-              {section.content.image && (
-                <div className="mt-2 relative h-40 w-full rounded-lg overflow-hidden">
-                  <img src={section.content.image} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
-            )}
 
             {section.content.cardTitle && (
                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -1320,25 +1325,25 @@ const AdminContent = () => {
     <div className="min-h-screen bg-gray-50 font-sans selection:bg-[#f20c92] selection:text-white">
       <AdminSidebar />
       
-      <main className="md:ml-64 min-h-screen bg-gray-50">
+      <main className="md:ml-64 min-h-screen bg-gray-50 flex flex-col pt-16 md:pt-0">
         {/* Header */}
-        <header className="h-20 border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 bg-white/80 backdrop-blur-md z-40">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-serif text-gray-900">Content Manager</h2>
-            <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-500">
+        <header className="h-16 md:h-20 border-b border-gray-200 flex items-center justify-between px-4 md:px-8 sticky top-16 md:top-0 bg-white/80 backdrop-blur-md z-40">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <h2 className="text-lg md:text-xl font-serif text-gray-900 truncate">Content Manager</h2>
+            <span className="hidden sm:inline-block px-3 py-1 bg-gray-100 rounded-full text-[10px] md:text-xs font-medium text-gray-500 truncate">
               {selectedPage.name}
             </span>
           </div>
           
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors">
+          <div className="flex items-center gap-2 md:gap-3">
+            <button className="flex items-center gap-2 px-3 md:px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors text-sm">
               <Eye size={18} />
-              <span className="hidden sm:inline">Preview</span>
+              <span className="hidden lg:inline">Preview</span>
             </button>
             <button 
               onClick={handleSave}
               disabled={isSaving}
-              className={`flex items-center gap-2 px-6 py-2 bg-[#f20c92] text-white rounded-lg transition-all shadow-md shadow-[#f20c92]/20 ${
+              className={`flex items-center gap-2 px-4 md:px-6 py-2 bg-[#f20c92] text-white rounded-lg transition-all shadow-md shadow-[#f20c92]/20 text-sm active:scale-95 ${
                 isSaving ? 'opacity-80 cursor-wait' : 'hover:bg-[#f20c92]/90 hover:shadow-lg hover:shadow-[#f20c92]/30'
               }`}
             >
@@ -1347,97 +1352,97 @@ const AdminContent = () => {
               ) : (
                 <Save size={18} />
               )}
-              <span>{saveMessage}</span>
+              <span className="hidden sm:inline">{saveMessage}</span>
+              <span className="sm:hidden">{isSaving ? '...' : 'Save'}</span>
             </button>
           </div>
         </header>
 
-        <div className="flex h-[calc(100vh-5rem)]">
-          {/* Page Sidebar */}
-          <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-            <div className="p-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Pages</h3>
-              <div className="space-y-1">
-                {pages.map(page => (
-                  <button
-                    key={page.id}
-                    onClick={() => {
-                      setSelectedPageId(page.id);
-                      setActiveSectionId(null);
-                    }}
-                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedPageId === page.id 
-                        ? 'bg-[#f20c92]/10 text-[#f20c92]' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {page.name}
-                  </button>
-                ))}
-              </div>
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          {/* Page Sidebar - Horizontal on mobile, vertical on desktop */}
+          <div className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 overflow-x-auto md:overflow-y-auto scrollbar-hide">
+            <div className="p-3 md:p-4 flex md:flex-col gap-2 md:gap-1">
+              <h3 className="hidden md:block text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Pages</h3>
+              {pages.map(page => (
+                <button
+                  key={page.id}
+                  onClick={() => {
+                    setSelectedPageId(page.id);
+                    setActiveSectionId(null);
+                  }}
+                  className={`whitespace-nowrap md:whitespace-normal text-left px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex-shrink-0 md:flex-shrink ${
+                    selectedPageId === page.id 
+                      ? 'bg-[#f20c92]/10 text-[#f20c92]' 
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {page.name}
+                </button>
+              ))}
               
-              <button className="mt-4 w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-[#f20c92] transition-colors">
+              <button className="whitespace-nowrap md:whitespace-normal mt-0 md:mt-4 flex items-center gap-2 px-4 py-2 text-xs md:text-sm text-gray-500 hover:text-[#f20c92] transition-colors flex-shrink-0 md:flex-shrink">
                 <Plus size={16} />
-                Add New Page
+                <span className="hidden md:inline">Add New Page</span>
+                <span className="md:hidden">New</span>
               </button>
             </div>
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-4xl mx-auto">
-              <div className="mb-8">
-                <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2">{selectedPage.name}</h1>
-                <p className="text-gray-500">Manage the sections and content for this page.</p>
+              <div className="mb-6 md:mb-8">
+                <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-1 md:mb-2">{selectedPage.name}</h1>
+                <p className="text-gray-500 text-xs md:text-sm">Manage the sections and content for this page.</p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {selectedPage.sections.map(section => (
                   <div 
                     key={section.id} 
-                    className={`bg-white border rounded-xl overflow-hidden transition-all duration-200 ${
+                    className={`bg-white border rounded-lg md:rounded-xl overflow-hidden transition-all duration-200 ${
                       activeSectionId === section.id 
                         ? 'border-[#f20c92] shadow-lg ring-1 ring-[#f20c92]/20' 
                         : 'border-gray-200 hover:border-gray-300 shadow-sm'
                     }`}
                   >
                     <div 
-                      className="p-4 flex items-center justify-between cursor-pointer bg-gray-50/50"
+                      className="p-3 md:p-4 flex items-center justify-between cursor-pointer bg-gray-50/50"
                       onClick={() => setActiveSectionId(activeSectionId === section.id ? null : section.id)}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${activeSectionId === section.id ? 'bg-[#f20c92]/10 text-[#f20c92]' : 'bg-gray-100 text-gray-500'}`}>
-                          {section.type === 'hero' && <ImageIcon size={18} />}
-                          {section.type === 'text' && <Type size={18} />}
-                          {section.type === 'features' && <Layout size={18} />}
-                          {section.type === 'split' && <SplitSquareHorizontal size={18} />}
-                          {section.type === 'quote' && <Quote size={18} />}
-                          {section.type === 'stats' && <BarChart3 size={18} />}
-                          {section.type === 'cta' && <LinkIcon size={18} />}
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <div className={`p-1.5 md:p-2 rounded-lg flex-shrink-0 ${activeSectionId === section.id ? 'bg-[#f20c92]/10 text-[#f20c92]' : 'bg-gray-100 text-gray-500'}`}>
+                          {section.type === 'hero' && <ImageIcon size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'text' && <Type size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'features' && <Layout size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'split' && <SplitSquareHorizontal size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'quote' && <Quote size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'stats' && <BarChart3 size={16} className="md:w-[18px] md:h-[18px]" />}
+                          {section.type === 'cta' && <LinkIcon size={16} className="md:w-[18px] md:h-[18px]" />}
                         </div>
-                        <span className="font-medium text-gray-900">{section.title}</span>
+                        <span className="font-medium text-gray-900 text-sm md:text-base truncate">{section.title}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full ${section.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${section.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {section.isVisible ? 'Visible' : 'Hidden'}
                         </span>
-                        <ChevronRight size={18} className={`text-gray-400 transition-transform ${activeSectionId === section.id ? 'rotate-90' : ''}`} />
+                        <ChevronRight size={16} className={`text-gray-400 transition-transform md:w-[18px] md:h-[18px] ${activeSectionId === section.id ? 'rotate-90' : ''}`} />
                       </div>
                     </div>
                     
                     {activeSectionId === section.id && (
-                      <div className="p-6 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
+                      <div className="p-4 md:p-6 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
                         {renderSectionEditor(section)}
                       </div>
                     )}
                   </div>
                 ))}
 
-                <button className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all flex items-center justify-center gap-2 group">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-[#f20c92]/10 flex items-center justify-center transition-colors">
-                    <Plus size={18} />
+                <button className="w-full py-3 md:py-4 border-2 border-dashed border-gray-300 rounded-lg md:rounded-xl text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all flex items-center justify-center gap-2 group">
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gray-100 group-hover:bg-[#f20c92]/10 flex items-center justify-center transition-colors">
+                    <Plus size={16} className="md:w-[18px] md:h-[18px]" />
                   </div>
-                  <span className="font-medium">Add New Section</span>
+                  <span className="font-medium text-sm md:text-base">Add New Section</span>
                 </button>
               </div>
             </div>
