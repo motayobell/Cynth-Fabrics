@@ -13,8 +13,6 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminSidebar = () => {
@@ -35,11 +33,6 @@ const AdminSidebar = () => {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Error signing out from Firebase:", error);
-    }
     localStorage.removeItem('currentUser');
     navigate('/admin/login');
   };

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { api } from '../services/api';
 
 export interface Subcategory {
   id: string;
@@ -44,33 +43,31 @@ const CategoryContext = createContext<CategoryContextType | undefined>(undefined
 export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
 
-  useEffect(() => {
-    const docRef = doc(db, 'settings', 'categories');
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.categories && Array.isArray(data.categories)) {
-          setCategories(data.categories);
-        }
+  const fetchCategories = async () => {
+    try {
+      const data = await api.getSettings('categories');
+      if (data && data.categories && Array.isArray(data.categories)) {
+        setCategories(data.categories);
       } else {
-        // Seed default categories if document doesn't exist
-        setDoc(docRef, { categories: DEFAULT_CATEGORIES }).catch(err => {
-          console.error("Failed to seed categories:", err);
-        });
+        // Seed default categories if not found
+        await api.updateSettings('categories', { categories: DEFAULT_CATEGORIES });
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/categories');
-    });
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchCategories();
   }, []);
 
   const saveCategories = async (newCategories: Category[]) => {
     try {
-      const docRef = doc(db, 'settings', 'categories');
-      await setDoc(docRef, { categories: newCategories });
+      await api.updateSettings('categories', { categories: newCategories });
+      setCategories(newCategories);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'settings/categories');
+      console.error("Error saving categories:", error);
+      throw error;
     }
   };
 

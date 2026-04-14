@@ -18,8 +18,7 @@ import AdminSidebar from '../components/AdminSidebar';
 import { useOrders, Order } from '../context/OrderContext';
 import Invoice from './Invoice';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { api } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const AdminOrders = () => {
@@ -49,10 +48,9 @@ const AdminOrders = () => {
   useEffect(() => {
     const fetchEmailSettings = async () => {
       try {
-        const docRef = doc(db, 'settings', 'emailConfig');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setEmailSettings(docSnap.data() as any);
+        const data = await api.getSettings('emailConfig');
+        if (data) {
+          setEmailSettings(data as any);
         }
       } catch (error) {
         console.error('Error fetching email settings:', error);

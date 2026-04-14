@@ -16,8 +16,8 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import { useProducts, Product } from '../context/ProductContext';
 import { useCategories } from '../context/CategoryContext';
+import { api } from '../services/api';
 import CategoryManagerModal from '../components/CategoryManagerModal';
-import { auth } from '../firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -142,33 +142,9 @@ const AdminProducts = () => {
           }
         }
 
-        const formData = new FormData();
-        formData.append('media', fileToUpload);
-
         try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            let errorMessage = 'Failed to upload file';
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorMessage;
-            } catch (e) {
-              const text = await response.text();
-              if (text.includes('413 Request Entity Too Large')) {
-                errorMessage = 'File is too large for the server configuration (Nginx limit).';
-              } else {
-                errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}...`;
-              }
-            }
-            throw new Error(errorMessage);
-          }
-
-          const data = await response.json();
-          return data.url;
+          const url = await api.uploadMedia(fileToUpload as File);
+          return url;
         } catch (error: any) {
           console.error("Upload error:", error);
           setSaveError(error.message || "Failed to upload file");
@@ -208,13 +184,11 @@ const AdminProducts = () => {
     const stockNum = productForm.stock === '' ? 0 : parseInt(productForm.stock, 10);
     const priceNum = productForm.price === '' ? 0 : parseFloat(productForm.price);
     
-    // Include the pending image URL if the user typed one but didn't click "Add"
     const finalImages = [...productForm.images];
     if (productForm.image && !finalImages.includes(productForm.image)) {
       finalImages.push(productForm.image);
     }
 
-    // Use the first image from the array as the main image, or fallback to the single image field if array is empty
     const mainImage = finalImages.length > 0 ? finalImages[0] : 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?q=80&w=2787&auto=format&fit=crop';
 
     const existingProduct = editingId ? products.find(p => String(p.id) === String(editingId)) : null;
@@ -237,23 +211,13 @@ const AdminProducts = () => {
     try {
       setSaveError(null);
       
-      if (!auth.currentUser) {
-        throw new Error('You are not authenticated with the database. Please log out and sign in with Google to save changes.');
-      }
-
-      let productJson = JSON.stringify(productData);
-
-      if (productJson.includes('data:image/') && productJson.length > 900000) {
-        throw new Error('This product contains old images that are too large. Please delete them and re-upload.');
-      }
-
-      const finalProductData = JSON.parse(productJson);
-
       if (editingId) {
-        await updateProduct(editingId, finalProductData);
+        await updateProduct(editingId, productData);
         setEditingId(null);
+        showToast('Product updated successfully');
       } else {
-        await addProduct(finalProductData);
+        await addProduct(productData);
+        showToast('Product added successfully');
       }
       
       setIsModalOpen(false);
@@ -270,12 +234,7 @@ const AdminProducts = () => {
       });
     } catch (error: any) {
       console.error('Error saving product:', error);
-      let errorMessage = error.message || 'Unknown error';
-      try {
-        const parsed = JSON.parse(errorMessage);
-        if (parsed.error) errorMessage = parsed.error;
-      } catch (e) {}
-      setSaveError(`Failed to save product: ${errorMessage}. Please try again.`);
+      setSaveError(`Failed to save product: ${error.message || 'Unknown error'}. Please try again.`);
     }
   };
 

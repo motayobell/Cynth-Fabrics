@@ -23,26 +23,15 @@ import AdminLogo from './pages/AdminLogo';
 import AdminSettings from './pages/AdminSettings';
 import Invoice from './pages/Invoice';
 import SizeGuide from './pages/SizeGuide';
-import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthenticated(true);
-      } else {
-        // Fallback to localStorage for testing if needed, but prefer Firebase Auth
-        const currentUser = localStorage.getItem('currentUser');
-        setIsAuthenticated(!!currentUser);
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
+    const currentUser = localStorage.getItem('currentUser');
+    setIsAuthenticated(!!currentUser);
+    setIsLoading(false);
   }, []);
 
   if (isLoading) {

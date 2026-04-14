@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, ShieldCheck, Palette, Home } from 'lucide-react';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { api } from '../services/api';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -20,24 +20,21 @@ export default function AdminLogin() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Check if user exists in Firestore, if not, create them (or you can restrict to only existing admins)
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      
       const userData = {
+        id: user.uid,
         name: user.displayName || 'Admin User',
         email: user.email,
         role: 'Super Admin',
-        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'Admin'}&background=random`
+        avatar: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'Admin'}&background=random`,
+        status: 'Active',
+        lastLogin: new Date().toISOString()
       };
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          ...userData,
-          id: user.uid,
-          status: 'Active',
-          lastLogin: new Date().toISOString()
-        });
+      // Sync with SQL database
+      try {
+        await api.upsertUser(userData);
+      } catch (sqlErr) {
+        console.warn("Failed to sync user to SQL:", sqlErr);
       }
 
       localStorage.setItem('currentUser', JSON.stringify(userData));
@@ -70,56 +67,44 @@ export default function AdminLogin() {
     setError('');
 
     try {
-      // 1. Check hardcoded fallback for testing
-      if (email === 'admin@cynthfabrics.com' && password === 'admin123') {
-        const user = {
-          name: 'Admin User',
-          email: email,
-          role: 'Super Admin',
-          avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=random'
-        };
-        
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        navigate('/admin/dashboard');
-        return;
-      }
-
-      // 2. Check Firestore for added admins
+      // Check SQL database for added admins
       try {
-        const q = query(collection(db, 'users'), where('email', '==', email));
-        const querySnapshot = await getDocs(q);
+        const users = await api.getUsers();
+        const foundUser = users.find((u: any) => u.email === email);
 
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          const userData = userDoc.data();
-
-          if (userData.password === password) {
-            // Success!
+        if (foundUser) {
+          // In a real app, we'd verify password on server. 
+          // For now, we'll check if it matches the stored password (if any)
+          // or allow the default admin
+          if (foundUser.password === password || (email === 'admin@cynthfabrics.com' && password === 'admin123')) {
             const user = {
-              id: userDoc.id,
-              name: userData.name,
-              email: userData.email,
-              role: userData.role,
-              avatar: userData.avatar || `https://ui-avatars.com/api/?name=${userData.name}&background=random`
+              ...foundUser,
+              lastLogin: new Date().toISOString()
             };
 
-            // Update last login
-            await updateDoc(doc(db, 'users', userDoc.id), {
-              lastLogin: new Date().toLocaleString()
-            });
-
+            await api.updateUser(foundUser.id, user);
             localStorage.setItem('currentUser', JSON.stringify(user));
             navigate('/admin/dashboard');
             return;
           }
+        } else if (email === 'admin@cynthfabrics.com' && password === 'admin123') {
+           // Default fallback
+           const user = {
+            id: 'default-admin',
+            name: 'Admin User',
+            email: email,
+            role: 'Super Admin',
+            avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=random'
+          };
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          navigate('/admin/dashboard');
+          return;
         }
-      } catch (firestoreErr: any) {
-        // If firestore fails (e.g. permission denied because not logged in via Firebase Auth)
-        // we just continue to the generic error message below
-        console.warn("Firestore check failed (likely permissions):", firestoreErr);
+      } catch (sqlErr) {
+        console.warn("SQL check failed:", sqlErr);
       }
 
-      setError('Invalid email or password. Please use Google Sign-In or default credentials.');
+      setError('Invalid email or password.');
     } catch (err: any) {
       console.error("Login error:", err);
       setError('An error occurred during login. Please try again.');

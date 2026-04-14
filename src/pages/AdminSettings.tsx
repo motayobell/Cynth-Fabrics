@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
 import { Save, Mail, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { api } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EmailSettings {
@@ -24,11 +23,9 @@ export default function AdminSettings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const docRef = doc(db, 'settings', 'emailConfig');
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          setSettings(docSnap.data() as EmailSettings);
+        const data = await api.getSettings('emailConfig');
+        if (data) {
+          setSettings(data as EmailSettings);
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
@@ -45,8 +42,7 @@ export default function AdminSettings() {
     setIsSaving(true);
     
     try {
-      const docRef = doc(db, 'settings', 'emailConfig');
-      await setDoc(docRef, settings);
+      await api.updateSettings('emailConfig', settings);
       
       setToast({ message: 'Settings saved successfully!', type: 'success' });
       setTimeout(() => setToast(null), 3000);

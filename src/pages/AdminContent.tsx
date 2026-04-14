@@ -495,8 +495,7 @@ const initialPages: PageContent[] = [
   }
 ];
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { api } from '../services/api';
 
 const AdminContent = () => {
   const [pages, setPages] = useState<PageContent[]>(initialPages);
@@ -506,17 +505,16 @@ const AdminContent = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const docRef = doc(db, 'content', 'siteContent');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setPages(docSnap.data().pages);
+        const data = await api.getContent('siteContent');
+        if (data && data.pages) {
+          setPages(data.pages);
         } else {
-          // Fallback to local storage if not in firestore yet
+          // Fallback to local storage if not in database yet
           const saved = localStorage.getItem('siteContent');
           if (saved) setPages(JSON.parse(saved));
         }
       } catch (error) {
-        // Fallback to local storage if offline or permission denied
+        // Fallback to local storage if offline or error
         const saved = localStorage.getItem('siteContent');
         if (saved) setPages(JSON.parse(saved));
       }
@@ -534,23 +532,14 @@ const AdminContent = () => {
     setSaveMessage('Saving...');
     
     try {
-      if (!auth.currentUser) {
-        throw new Error('Not authenticated with database');
-      }
-
       let pagesJson = JSON.stringify(pages);
-      
-      if (pagesJson.includes('data:image/') && pagesJson.length > 900000) {
-        throw new Error('Some images are still saved in the old format and are too large. Please replace all old images with new uploads before saving.');
-      }
-
       const finalPages = JSON.parse(pagesJson);
 
-      const docRef = doc(db, 'content', 'siteContent');
       try {
-        await setDoc(docRef, { pages: finalPages });
+        await api.updateContent('siteContent', { pages: finalPages });
       } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, 'content/siteContent');
+        console.error('Error saving to SQL:', error);
+        throw error;
       }
       localStorage.setItem('siteContent', pagesJson); // Keep local backup
       setPages(finalPages);
@@ -560,11 +549,7 @@ const AdminContent = () => {
       console.error('Error saving content:', error);
       setIsSaving(false);
       let errorMessage = error.message || 'Error saving';
-      try {
-        const parsed = JSON.parse(errorMessage);
-        if (parsed.error) errorMessage = parsed.error;
-      } catch (e) {}
-      setSaveMessage(errorMessage === 'Not authenticated with database' ? 'Login with Google to save' : errorMessage);
+      setSaveMessage(errorMessage);
     }
     
     // Reset message after 3 seconds

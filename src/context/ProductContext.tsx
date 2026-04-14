@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { api } from '../services/api';
 
 export interface Product {
   id: string | number;
@@ -34,81 +33,65 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
 
-  useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        // Seed initial data if empty and user is likely an admin
-        if (auth.currentUser) {
-          seedInitialData();
-        } else {
-          setProducts(INITIAL_PRODUCTS);
-        }
+  const fetchProducts = async () => {
+    try {
+      const data = await api.getProducts();
+      if (data && data.length > 0) {
+        setProducts(data);
       } else {
-        const productsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Product[];
-        setProducts(productsData);
+        // Seed initial data if empty
+        await seedInitialData();
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'products');
-      // Fallback to local data if offline or permission denied
-      if (products.length === 0) {
-        setProducts(INITIAL_PRODUCTS);
-      }
-    });
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts(INITIAL_PRODUCTS);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
   const seedInitialData = async () => {
     try {
       for (const product of INITIAL_PRODUCTS) {
-        const docRef = doc(collection(db, 'products'), String(product.id));
-        await setDoc(docRef, {
-          ...product,
-          createdAt: serverTimestamp()
-        });
+        await api.createProduct(product);
       }
+      const data = await api.getProducts();
+      setProducts(data);
     } catch (error) {
-      // If seeding fails (e.g., due to permissions), fallback to local data
-      if (products.length === 0) {
-        setProducts(INITIAL_PRODUCTS);
-      }
+      console.error("Error seeding products:", error);
+      setProducts(INITIAL_PRODUCTS);
     }
   };
 
   const addProduct = async (product: Product) => {
     try {
-      const docRef = doc(collection(db, 'products'), String(product.id));
-      await setDoc(docRef, {
-        ...product,
-        createdAt: serverTimestamp()
-      });
+      await api.createProduct(product);
+      await fetchProducts();
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'products');
+      console.error("Error adding product:", error);
+      throw error;
     }
   };
 
   const updateProduct = async (id: string | number, updatedProduct: Product) => {
     try {
-      const docRef = doc(db, 'products', String(id));
-      await updateDoc(docRef, {
-        ...updatedProduct
-      });
+      await api.updateProduct(String(id), updatedProduct);
+      await fetchProducts();
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+      console.error("Error updating product:", error);
+      throw error;
     }
   };
 
   const deleteProduct = async (id: string | number) => {
     try {
-      const docRef = doc(db, 'products', String(id));
-      await deleteDoc(docRef);
+      await api.deleteProduct(String(id));
+      await fetchProducts();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
+      console.error("Error deleting product:", error);
+      throw error;
     }
   };
 

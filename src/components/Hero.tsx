@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HeroCarousel, MediaItem } from './HeroCarousel';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { api } from '../services/api';
 
 const HERO_ITEMS: MediaItem[] = [
   {
@@ -40,12 +39,11 @@ export function Hero() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const docRef = doc(db, 'content', 'siteContent');
-        const docSnap = await getDoc(docRef);
+        const data = await api.getContent('siteContent');
         
         let parsed = null;
-        if (docSnap.exists()) {
-          parsed = docSnap.data().pages;
+        if (data && data.pages) {
+          parsed = data.pages;
         } else {
           const savedContent = localStorage.getItem('siteContent');
           if (savedContent) parsed = JSON.parse(savedContent);

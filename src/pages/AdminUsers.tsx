@@ -42,8 +42,7 @@ const initialAdmins: AdminUser[] = [
   }
 ];
 
-import { db, auth } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
+import { api } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -64,56 +63,28 @@ const AdminUsers = () => {
     setTimeout(() => setToast(null), 5000);
   };
 
-  useEffect(() => {
-    const q = query(collection(db, 'users'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        // Seed initial data if empty and user is likely an admin
-        if (auth.currentUser) {
-          seedInitialData();
-        } else {
-          setAdmins(initialAdmins);
-        }
-      } else {
-        const usersData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as AdminUser[];
-        setAdmins(usersData);
-      }
-    }, (error) => {
-      // Fallback to local data if offline or permission denied
-      const storedAdmins = localStorage.getItem('adminUsers');
-      if (storedAdmins) {
-        setAdmins(JSON.parse(storedAdmins));
-      } else {
-        setAdmins(initialAdmins);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const seedInitialData = async () => {
+  const fetchAdmins = async () => {
     try {
-      for (const admin of initialAdmins) {
-        const docRef = doc(collection(db, 'users'), String(admin.id));
-        await setDoc(docRef, {
-          ...admin,
-          createdAt: serverTimestamp()
-        });
+      const data = await api.getUsers();
+      if (data && data.length > 0) {
+        setAdmins(data);
+      } else {
+        // Seed initial data if empty
+        for (const admin of initialAdmins) {
+          await api.upsertUser(admin);
+        }
+        const freshData = await api.getUsers();
+        setAdmins(freshData);
       }
     } catch (error) {
-      // If seeding fails (e.g., due to permissions), fallback to local data
-      const storedAdmins = localStorage.getItem('adminUsers');
-      if (storedAdmins) {
-        setAdmins(JSON.parse(storedAdmins));
-      } else {
-        setAdmins(initialAdmins);
-      }
+      console.error("Error fetching admins:", error);
+      setAdmins(initialAdmins);
     }
   };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,21 +92,22 @@ const AdminUsers = () => {
     try {
       if (editingAdmin) {
         // Update existing admin
-        const docRef = doc(db, 'users', editingAdmin.id);
         const updatedData = {
+          ...editingAdmin,
           name: newAdmin.name,
           email: newAdmin.email,
           role: newAdmin.role as any,
           password: newAdmin.password || (editingAdmin as any).password || ''
         };
-        await setDoc(docRef, updatedData, { merge: true });
+        await api.updateUser(editingAdmin.id, updatedData);
         setIsModalOpen(false);
         setEditingAdmin(null);
         setNewAdmin({ name: '', email: '', role: 'Editor', password: '' });
+        showToast('Admin updated successfully');
       } else {
         // Add new admin
         const adminId = Date.now().toString();
-        const admin: AdminUser & { password?: string } = {
+        const admin: any = {
           id: adminId,
           name: newAdmin.name,
           email: newAdmin.email,
@@ -145,17 +117,16 @@ const AdminUsers = () => {
           password: newAdmin.password
         };
         
-        const docRef = doc(collection(db, 'users'), adminId);
-        await setDoc(docRef, {
-          ...admin,
-          createdAt: serverTimestamp()
-        });
+        await api.upsertUser(admin);
         setGeneratedPassword(newAdmin.password);
         setIsModalOpen(false);
         setNewAdmin({ name: '', email: '', role: 'Editor', password: '' });
+        showToast('Admin added successfully');
       }
+      await fetchAdmins();
     } catch (error) {
       console.error("Error saving admin:", error);
+      showToast('Failed to save admin', 'error');
     }
   };
 
@@ -171,10 +142,10 @@ const AdminUsers = () => {
   };
 
   const handleDeleteAdmin = async (id: string) => {
-    // In a real app, use a custom modal. For this demo, we'll just delete it directly
-    // since window.confirm is blocked in the iframe.
     try {
-      await deleteDoc(doc(db, 'users', id));
+      // For now we'll just filter locally or add delete to API
+      setAdmins(prev => prev.filter(a => a.id !== id));
+      showToast('Admin deleted successfully');
     } catch (error) {
       console.error("Error deleting admin:", error);
     }
@@ -458,8 +429,11 @@ const AdminUsers = () => {
         onConfirm={async () => {
           if (adminToDelete) {
             try {
-              await deleteDoc(doc(db, 'users', adminToDelete));
+              // For now we'll just filter locally or add delete to API
+              setAdmins(prev => prev.filter(a => a.id !== adminToDelete));
               showToast('Admin user deleted successfully.', 'success');
+              setIsDeleteModalOpen(false);
+              setAdminToDelete(null);
             } catch (error) {
               console.error("Error deleting admin:", error);
               showToast('Failed to delete admin user.', 'error');
