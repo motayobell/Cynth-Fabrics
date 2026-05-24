@@ -25,14 +25,15 @@ const HERO_ITEMS: MediaItem[] = [
 ];
 
 export function Hero() {
-  const [items, setItems] = useState<MediaItem[]>(HERO_ITEMS);
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [content, setContent] = useState({
-    smallHeading: 'New Season 2024',
-    heading: 'Wear Your Roots With Pride',
-    subheading: 'High-fashion Nigerian native wear designed for the global citizen.\nAuthenticity woven into every fiber, delivered worldwide.',
-    buttonText: 'Shop Now',
+    smallHeading: '',
+    heading: '',
+    subheading: '',
+    buttonText: '',
     buttonLink: '/shop',
-    button2Text: 'View Lookbook',
+    button2Text: '',
     button2Link: '/lookbook'
   });
 
@@ -49,25 +50,68 @@ export function Hero() {
           if (savedContent) parsed = JSON.parse(savedContent);
         }
 
+        let hasLoadedContent = false;
         if (parsed) {
           const homePage = parsed.find((p: any) => p.id === 'home');
           const heroSection = homePage?.sections.find((s: any) => s.id === 'home-hero');
           if (heroSection?.content) {
-            if (heroSection.content.items) {
+            if (heroSection.content.items && heroSection.content.items.length > 0) {
               setItems(heroSection.content.items);
+            } else {
+              setItems(HERO_ITEMS);
             }
             setContent(prev => ({
               ...prev,
               ...heroSection.content
             }));
+            hasLoadedContent = true;
           }
+        }
+
+        if (!hasLoadedContent) {
+          // Fallback to defaults
+          setItems(HERO_ITEMS);
+          setContent({
+            smallHeading: 'New Season 2024',
+            heading: 'Wear Your Roots With Pride',
+            subheading: 'High-fashion Nigerian native wear designed for the global citizen.\nAuthenticity woven into every fiber, delivered worldwide.',
+            buttonText: 'Shop Now',
+            buttonLink: '/shop',
+            button2Text: 'View Lookbook',
+            button2Link: '/lookbook'
+          });
         }
       } catch (e) {
         console.error('Failed to load content', e);
+        // Fallback to defaults on error
+        setItems(HERO_ITEMS);
+        setContent({
+          smallHeading: 'New Season 2024',
+          heading: 'Wear Your Roots With Pride',
+          subheading: 'High-fashion Nigerian native wear designed for the global citizen.\nAuthenticity woven into every fiber, delivered worldwide.',
+          buttonText: 'Shop Now',
+          buttonLink: '/shop',
+          button2Text: 'View Lookbook',
+          button2Link: '/lookbook'
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchContent();
   }, []);
+
+  if (isLoading) {
+    return (
+      <section className="relative h-screen flex items-center justify-center bg-[#1a0c15]">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-4 w-32 bg-white/10 rounded mb-4"></div>
+          <div className="h-12 w-64 bg-white/10 rounded mb-6"></div>
+          <div className="h-4 w-48 bg-white/10 rounded"></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">

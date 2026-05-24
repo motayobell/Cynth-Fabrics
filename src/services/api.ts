@@ -4,11 +4,15 @@ const API_BASE = '/api';
 export const api = {
   // Products
   async getProducts() {
-    const res = await fetch(`${API_BASE}/products`);
+    const res = await fetch(`${API_BASE}/products?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     return res.json();
   },
   async getProduct(id: string) {
-    const res = await fetch(`${API_BASE}/products/${id}`);
+    const res = await fetch(`${API_BASE}/products/${id}?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     return res.json();
   },
   async createProduct(product: any) {
@@ -36,7 +40,9 @@ export const api = {
 
   // Content
   async getContent(id: string) {
-    const res = await fetch(`${API_BASE}/content/${id}`);
+    const res = await fetch(`${API_BASE}/content/${id}?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Content not found');
     return res.json();
   },
@@ -51,7 +57,9 @@ export const api = {
 
   // Orders
   async getOrders() {
-    const res = await fetch(`${API_BASE}/orders`);
+    const res = await fetch(`${API_BASE}/orders?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     return res.json();
   },
   async createOrder(order: any) {
@@ -73,7 +81,9 @@ export const api = {
 
   // Users
   async getUsers() {
-    const res = await fetch(`${API_BASE}/users`);
+    const res = await fetch(`${API_BASE}/users?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     return res.json();
   },
   async upsertUser(user: any) {
@@ -95,7 +105,9 @@ export const api = {
 
   // Settings
   async getSettings(id: string) {
-    const res = await fetch(`${API_BASE}/settings/${id}`);
+    const res = await fetch(`${API_BASE}/settings/${id}?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Settings not found');
     return res.json();
   },

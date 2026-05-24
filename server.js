@@ -7,22 +7,24 @@ import Database from 'better-sqlite3';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Ensure uploads and public directories exist with safety
-const uploadsDir = path.join(__dirname, 'uploads');
-const publicDir = path.join(__dirname, 'public');
-const dbPath = path.join(__dirname, 'database.sqlite');
+// Configure persistent storage paths
+// On Hostinger, you can set DATA_DIR to a folder outside your git repo (e.g., /home/u12345/cynth_data)
+// This ensures your uploads and database are NOT deleted when you push new updates.
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const uploadsDir = path.join(DATA_DIR, 'uploads');
+const publicDir = path.join(DATA_DIR, 'public');
+const dbPath = path.join(DATA_DIR, 'database.sqlite');
 
+// Ensure directories exist
 try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-    console.log('Created uploads directory at:', uploadsDir);
-  }
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-    console.log('Created public directory at:', publicDir);
-  }
+  [uploadsDir, publicDir].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log('Using directory at:', dir);
+    }
+  });
 } catch (err) {
-  console.error('Could not create directories:', err);
+  console.error('Could not create storage directories:', err);
 }
 
 // Initialize SQLite Database
@@ -77,6 +79,9 @@ db.exec(`
     id TEXT PRIMARY KEY,
     data TEXT
   );
+
+  -- Seed initial site content if empty
+  INSERT OR IGNORE INTO content (id, data) VALUES ('siteContent', '{"pages":[]}');
 `);
 
 // Configure multer
@@ -107,6 +112,16 @@ async function startServer() {
 
   app.use(express.json({ limit: '500mb' }));
   app.use(express.urlencoded({ limit: '500mb', extended: true }));
+
+  // Disable caching for all API routes - Very aggressive to bypass Hostinger/LiteSpeed caches
+  app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    res.set('Vary', '*');
+    next();
+  });
 
   // Health check
   app.get('/health', (req, res) => {
@@ -337,8 +352,15 @@ async function startServer() {
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.use(express.static(publicDir));
-    app.use('/uploads', express.static(uploadsDir));
-    app.get('*', (req, res) => res.sendFile(path.resolve(__dirname, 'dist', 'index.html')));
+    app.use('/uploads', express.static(uploadsDir, {
+      setHeaders: (res) => {
+        res.set('Cache-Control', 'no-cache, must-revalidate');
+      }
+    }));
+    app.get('*', (req, res) => {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
