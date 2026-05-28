@@ -1,0 +1,363 @@
+[
+  {
+    "id": "home",
+    "name": "Home Page",
+    "slug": "/",
+    "sections": [
+      {
+        "id": "home-hero",
+        "type": "hero",
+        "title": "Hero Carousel",
+        "isVisible": true,
+        "content": {
+          "smallHeading": "New Season 2024",
+          "heading": "Wear Your Roots With Pride",
+          "subheading": "High-fashion Nigerian native wear designed for the global citizen.\nAuthenticity woven into every fiber, delivered worldwide.",
+          "buttonText": "Shop Now",
+          "buttonLink": "/shop",
+          "button2Text": "View Lookbook",
+          "button2Link": "/lookbook",
+          "items": [
+            {
+              "id": 1,
+              "type": "image",
+              "src": "https://lh3.googleusercontent.com/aida-public/AB6AXuC9LPwI45V1RmCpNujv214sIY6WDaoHq1Iw_0Py7gADdZysl8Bl4rzpvD9oFPZgx1zTtpQWX0dOrlbFXzQPA85YfxTC28tMP9IMo-RWhHtJ5hW1DbTnZE2A7dADDA2YjwG19H_7-Ct-dXgzV85grAtCtdcf5VkUR6gOFUARIVfK14lds_R0OarmOeehINhOcYabfhb-SZW-gzYd1ervcwKuXik2q6lVEeh3ZI5u01BT_V_6v5UF7UlAfNUXctHLdJDe_XEh_QbFaPY",
+              "alt": "Woman in nature"
+            },
+            {
+              "id": 2,
+              "type": "video",
+              "src": "https://cdn.coverr.co/videos/coverr-walking-in-a-field-of-flowers-5334/1080p.mp4",
+              "poster": "https://cdn.coverr.co/videos/coverr-walking-in-a-field-of-flowers-5334/poster.jpg"
+            },
+            {
+              "id": 3,
+              "type": "image",
+              "src": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1770&q=80",
+              "alt": "Fashion model walking"
+            }
+          ]
+        }
+      },
+      {
+        "id": "home-trust",
+        "type": "features",
+        "title": "Trust Bar",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "Worldwide Shipping", "link": "Direct to your door, anywhere in the world.", "icon": "Globe" },
+            { "title": "Authentic Craftsmanship", "link": "Hand-woven detailing by master Nigerian artisans.", "icon": "Gem" },
+            { "title": "Premium Fabrics", "link": "Guaranteed luxury cottons and bespoke silks.", "icon": "Layers" }
+          ]
+        }
+      },
+      {
+        "id": "home-featured",
+        "type": "features",
+        "title": "Featured Collection",
+        "isVisible": true,
+        "content": {
+          "heading": "Featured Collection",
+          "smallHeading": "Curated Excellence",
+          "items": [
+            { "title": "New Arrivals", "image": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80", "link": "/shop/new" },
+            { "title": "Best Sellers", "image": "https://images.unsplash.com/photo-1529139574466-a302d27f6088?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80", "link": "/shop/best-sellers" },
+            { "title": "Accessories", "image": "https://images.unsplash.com/photo-1509319117193-51043f6556f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80", "link": "/shop/accessories" },
+            { "title": "Limited Edition", "image": "https://images.unsplash.com/photo-1483985988355-763728e1935b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80", "link": "/shop/limited" }
+          ]
+        }
+      },
+      {
+        "id": "home-story",
+        "type": "split",
+        "title": "Story Section",
+        "isVisible": true,
+        "content": {
+          "mediaItems": [
+            {
+              "id": 1,
+              "type": "image",
+              "src": "https://lh3.googleusercontent.com/aida-public/AB6AXuDeBhEn-EOzB9gmZQPNqkQVzZ-xNnW6TAb2s989SZBLmldrHJ2Al1OPQx7yVcUOyxWuimxTuX9zgTmQ25ZLSjZ_bYo29APMCNb84aAQ1jX_dFYTwZkWmZ9e42fFAfQgD_uftCqmQKpsLnacIpxyUUXikUv21Zu_1fl0J4hDsNRudMwZfbEX0SaervB1rT33TRCNbx-e_LMLIU_GyMcMr9ZH5dPT_lyXchylZneklp6Lt0ZyWoW2UkBSAYpRVKeRCg_RBE5quvdo6Ww",
+              "alt": "Sustainable Materials"
+            }
+          ],
+          "smallHeading": "Our Heritage",
+          "heading": "Tradition Reimagined for the Modern World",
+          "text1": "Founded in the heart of Lagos and refined for the global stage, Cynth Fabrics is more than a fashion label. We are a bridge between generations. Each piece we create is a love letter to Nigerian craftsmanship, utilizing techniques passed down through centuries to dress the visionaries of today.",
+          "text2": "We source only the finest fabrics—from authentic Aso-Oke to premium Italian silks—ensuring that when you wear Cynth Fabrics, you carry the weight of tradition with the comfort of modern luxury.",
+          "linkText": "Discover Our Process",
+          "linkUrl": "/about"
+        }
+      },
+      {
+        "id": "home-newsletter",
+        "type": "cta",
+        "title": "Newsletter",
+        "isVisible": true,
+        "content": {
+          "heading": "Join the Heritage Circle",
+          "subheading": "Subscribe to receive exclusive access to our private collection drops, style guides, and cultural stories.",
+          "buttonText": "Join Now"
+        }
+      }
+    ]
+  },
+  {
+    "id": "story",
+    "name": "Our Story",
+    "slug": "/story",
+    "sections": [
+      {
+        "id": "story-hero",
+        "type": "hero",
+        "title": "Hero Section",
+        "isVisible": true,
+        "content": {
+          "smallHeading": "Established in the Heart of Lagos",
+          "heading": "The Soul of Nigerian Craft",
+          "subheading": "Honoring the master tailors who stitch our history into every garment, bridging the gap between ancestral heritage and the global diaspora.",
+          "backgroundImage": "https://lh3.googleusercontent.com/aida-public/AB6AXuAdEpS500GCpu7k5CJkkqzugQ5o-nLBDfi4kWCrUDJPDAUBUNRoudD3BsaGIvCINmPwbZ4CNewkVCh7N-oY9NNVIgxxRKVlWags2dGh1-NUcoMMd6Gu10T_xY1zLKCiNJGrKWrP_tHCWq4VMn3aATINfdF03y_Q0zR74DY8Y3P4ooS6uSOH9LfFHY_0zm08NhAwCMrBdO5pOY_yTl22KAFGHEl0-WGZPzhtkoz_naQ_yezmPhOfic8vYeIuDjUC-X97yiEdLB7JU1E"
+        }
+      },
+      {
+        "id": "story-master-intro",
+        "type": "split",
+        "title": "Master Tailors Intro",
+        "isVisible": true,
+        "content": {
+          "smallHeading": "Heritage & Innovation",
+          "heading": "Master Tailors: The Keepers of Art",
+          "text1": "At Cynth Fabrics, we don't just source material; we preserve legacy. Our master tailors in Nigeria are artisans whose techniques have been passed down through centuries. Each stitch is a testament to the resilience and vibrancy of Nigerian culture.",
+          "text2": "From the intricate hand-weaving of Aso Oke to the precision of modern couture silhouettes, we celebrate the hands that bring our vision to life. This is luxury defined by lineage.",
+          "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuBNZq8uO4AjadlkM3P9OrlylVcPtGgBhzOAFFk6uaopmZ0ujREvl8vviU7Cjo4r44J5OYL18KFXJA3agJdcnBedPTw8WEM1S3PIWdBumqgL17f0pHyE7vFIP0US-rMmoL32eouNv5DSSgsnNYjKy1_-twBRFbhog1_IAPRNdKGwA1L3P-OZVISsDQUcu3olbp2HvHxgiMcH1jb90YxXbq23EO-WArMHg1HT4TYgpLJWVUjgkFDqJwh6jStVeJ63KfpEqKbkOYDowW0",
+          "cardTitle": "Signature Quality",
+          "cardSubtitle": "Gold-Threaded Excellence"
+        }
+      },
+      {
+        "id": "story-master-list",
+        "type": "features",
+        "title": "Master Tailors List",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "01", "link": "Ancestral Weaving Techniques" },
+            { "title": "02", "link": "Master Tailor Collaboration" },
+            { "title": "03", "link": "Diaspora Identity Silhouettes" }
+          ]
+        }
+      },
+      {
+        "id": "story-quote",
+        "type": "quote",
+        "title": "Founder Quote",
+        "isVisible": true,
+        "content": {
+          "text": "\"We are not merely creating garments; we are stitching together the fragmented stories of home for a global generation. Cynth Fabrics is where heritage meets the horizon.\"",
+          "author": "Cynthia Abiodun",
+          "role": "Founder & Creative Director"
+        }
+      },
+      {
+        "id": "story-narrative",
+        "type": "features",
+        "title": "The Narrative",
+        "isVisible": true,
+        "content": {
+          "smallHeading": "The Narrative",
+          "heading": "The Diaspora Odyssey",
+          "sideText": "Our journey mirrors your own. From the bustling energy of Lagos markets to the refined luxury of the world's fashion capitals.",
+          "items": [
+            { "title": "Origins: Lagos", "link": "The heartbeat. Inspired by the master artisans of Balogun, where color and texture tell stories of royalty and pride.", "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuDdLwujNqyDuqlxstsaptVSnqMv48BPvPX1gcRvjy7_V03XwsnDZc1WOSsyYNWZRIK4m9JYkpGt-3VK4OzYu_KqSeaih-GivoKLFhRoyWDzOvEnzMQMESiyF2-k1U3guWn0sKq-syRD6cvJR-gTc5eV_1BaN0nCEpaa_SWZvw98wCnWq3IbK5dQlYLSCLeR2Gyh-EqDDHxIwRD-fXugFIgfgJzzQZ0wDfFX0FdJRmNFGr37aGgO60LvogzNT76NHs_glObA27NDGck" },
+            { "title": "Craft: The Atelier", "link": "Where heritage is honed. Applying the rigor of high-fashion tailoring to traditional West African textiles.", "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuAHPt6j3zgrV7Vf4DYlTwSeWKA_ZELacoQkbZLtDyUhM_MSVLBNvwOtKHS3xZWNf5o0tVC8B4XmD30F1f_qCzbIr9nm3j7-w-zQXFQBEyXewLung33U2dsksz1t6glUAkfvVwYojhHTgSGy3nt0WklHtFlslesCJciOB-GXwszvuGHKpJZj4U4kUB6iUuZyvZTuMwTjj3F7pW8ZI6uawKYsoAv8saeEsgAckL1Nni3HP5e3QLIxQEqQ7NsaRv00pd0VlUenW8AaScE" },
+            { "title": "Vision: Global Impact", "link": "Demanding a permanent seat for Nigerian excellence in the global luxury landscape.", "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuDNcM1UGVQ8dCijn9yEFMh3pOjvOedPf0Y4xcIlVs4PGfs370pokxR8W59c8En4p6tR208JqwIG8i3HTiJNQf4RWJ6L_pUxzQEqbXM5M6bp68T2WH_aD1Yi0ewez-FOXKsPN4tggnN5DALwgahsZAw3T0S9_oodrcVQDxaRkxFFyLES1qWHWzAJZzVDsAywrxHq87R8eVSxG0Cap4H4SaBb80VrLHtOpI4GTrrQdf54RkJvLlNt6N93YTlaTGx5HgkhqxgdRhx4a9I" }
+          ]
+        }
+      },
+      {
+        "id": "story-guarantee",
+        "type": "stats",
+        "title": "The Guarantee",
+        "isVisible": true,
+        "content": {
+          "heading": "The Cynth Guarantee",
+          "text1": "True luxury is found in the details that honor the maker. We refuse to compromise on the dignity of our master tailors or the integrity of our ancestral fabrics.",
+          "text2": "Every purchase supports the training of new apprentices in Lagos, ensuring the art of Nigerian tailoring thrives for generations to come.",
+          "buttonText": "Experience the Craft",
+          "buttonLink": "/shop",
+          "stats": [
+            { "value": "100%", "label": "Artisanal Fibers" },
+            { "value": "36hr", "label": "Master Finishing" },
+            { "value": "Gold", "label": "Standard Quality" },
+            { "value": "Ethic", "label": "Fair Artisan Trade" }
+          ]
+        }
+      },
+      {
+        "id": "story-global",
+        "type": "split",
+        "title": "Global Presence",
+        "isVisible": true,
+        "content": {
+          "heading": "Global Presence",
+          "subheading": "Lagos • London • New York",
+          "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuDmyyNW1NA1gMeAV9GvhCSsok2F8vDYPiAKDWg3bd4OpupjvKZaCGNGUUxn0Or495vaI4SZBFg79vqY8dr7LnZWRdg9Aw2m3jwK-EhyYY2YdsYxkNjSkeARcnFNEVaWZ0wBpppvSwNlBiwFtsgjejHo8_zEMvQXGnHu7H3PdkW-3jdxlgd-4otpkDh1jyD8jMcVGfU65tmWPg9_m3DZpuJAw7w5LR4C-TGQjrIbxGuLdo2JXHdoIf3UGxQZfJansJFSmxPZt0f3KJE",
+          "cardTitle": "Lagos flagship Atelier",
+          "cardSubtitle": "Victoria Island, Nigeria",
+          "linkText": "Book a Consultation",
+          "linkUrl": "/contact"
+        }
+      }
+    ]
+  },
+  {
+    "id": "contact",
+    "name": "Contact Us",
+    "slug": "/contact",
+    "sections": [
+      {
+        "id": "contact-intro",
+        "type": "split",
+        "title": "Intro Section",
+        "isVisible": true,
+        "content": {
+          "smallHeading": "Connect with Oma",
+          "heading": "Get in Touch",
+          "text1": "Bridging heritage and contemporary luxury. Whether it's a sizing query or a custom commission, our artisans are here to assist you.",
+          "image": ""
+        }
+      },
+      {
+        "id": "contact-bespoke",
+        "type": "cta",
+        "title": "Bespoke Tailoring Card",
+        "isVisible": true,
+        "content": {
+          "heading": "Bespoke Tailoring",
+          "subheading": "Experience the ultimate in Nigerian craftsmanship. We offer worldwide virtual consultations for custom bridal and gala wear.",
+          "buttonText": "Start a Commission",
+          "buttonLink": "/"
+        }
+      },
+      {
+        "id": "contact-details",
+        "type": "features",
+        "title": "Contact Details",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "WhatsApp", "link": "+234 800 OMA HERITAGE" },
+            { "title": "Email", "link": "concierge@omaheritage.com" },
+            { "title": "Instagram", "link": "@omaheritage_official" },
+            { "title": "Studio", "link": "Lagos & London" }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "shop",
+    "name": "Shop",
+    "slug": "/shop",
+    "sections": [
+      {
+        "id": "shop-quote",
+        "type": "quote",
+        "title": "Sidebar Quote",
+        "isVisible": true,
+        "content": {
+          "text": "\"Crafting identity for the global Nigerian. Every stitch tells a story of heritage and prestige.\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "checkout",
+    "name": "Checkout",
+    "slug": "/checkout",
+    "sections": [
+      {
+        "id": "checkout-hero",
+        "type": "text",
+        "title": "Hero Section",
+        "isVisible": true,
+        "content": {
+          "text": "Luxury Nigerian Fashion — Finalize your bespoke custom order details below. Our artisans are ready to bring your vision to life."
+        }
+      },
+      {
+        "id": "checkout-info",
+        "type": "text",
+        "title": "Confirmation Message",
+        "isVisible": true,
+        "content": {
+          "text": "Our team will contact you via WhatsApp within 24 hours to confirm availability and payment details."
+        }
+      }
+    ]
+  },
+  {
+    "id": "product-detail",
+    "name": "Product Detail",
+    "slug": "/product/:id",
+    "sections": [
+      {
+        "id": "product-accordions",
+        "type": "features",
+        "title": "Info Accordions",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "Tailored Fit Guide", "link": "Link to guide or modal" },
+            { "title": "Worldwide Shipping", "link": "Link to shipping policy" }
+          ]
+        }
+      },
+      {
+        "id": "product-badges",
+        "type": "features",
+        "title": "Trust Badges",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "Authentic Wool", "link": "" },
+            { "title": "Hand Crafted", "link": "" },
+            { "title": "Free Returns", "link": "" }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "global",
+    "name": "Global Settings",
+    "slug": "global",
+    "sections": [
+      {
+        "id": "global-header",
+        "type": "features",
+        "title": "Header Navigation",
+        "isVisible": true,
+        "content": {
+          "items": [
+            { "title": "Collections", "link": "/collections" },
+            { "title": "Home", "link": "/" },
+            { "title": "Our Story", "link": "/story" },
+            { "title": "Contact", "link": "/contact" }
+          ]
+        }
+      },
+      {
+        "id": "global-footer",
+        "type": "text",
+        "title": "Footer Settings",
+        "isVisible": true,
+        "content": {
+          "text": "Premium Nigerian native wears tailored for excellence. Crafted at home, worn across the world.",
+          "copyright": "© 2024 Cynth Fabrics. All rights reserved."
+        }
+      }
+    ]
+  }
+]

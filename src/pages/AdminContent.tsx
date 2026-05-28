@@ -503,9 +503,22 @@ const AdminContent = () => {
           // Fallback to local storage if not in database yet
           const saved = localStorage.getItem('siteContent');
           if (saved) {
-            setPages(JSON.parse(saved));
+            const parsedSaved = JSON.parse(saved);
+            setPages(parsedSaved);
+            // Sync with DB
+            try {
+              await api.updateContent('siteContent', { pages: parsedSaved });
+            } catch (syncErr) {
+              console.error('Failed to sync localStorage to database on Hostinger:', syncErr);
+            }
           } else {
             setPages(initialPages);
+            // Pre-seed backend
+            try {
+              await api.updateContent('siteContent', { pages: initialPages });
+            } catch (seedErr) {
+              console.error('Failed to pre-seed database with initialPages on Hostinger:', seedErr);
+            }
           }
         }
       } catch (error) {

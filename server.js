@@ -15,8 +15,9 @@ let DATA_DIR = process.env.DATA_DIR;
 if (!DATA_DIR) {
   try {
     const home = os.homedir();
-    // Hostinger custom/cPanel system directories start with /home/uXXXXXXX
-    if (home && (home.startsWith('/home/u') || home.includes('/home/')) && fs.existsSync(home)) {
+    // Hostinger and typical cPanel servers use paths like /home/username, /home1/username, /home2/username, etc.
+    // If we're on a real server environment with a valid user home dir (not local root or system directories) we put our database there.
+    if (home && home !== '/' && home !== '/root' && (home.includes('/home') || home.includes('/Users/')) && fs.existsSync(home)) {
       DATA_DIR = path.join(home, 'cynth_data');
     } else {
       DATA_DIR = __dirname;
@@ -94,10 +95,44 @@ db.exec(`
     id TEXT PRIMARY KEY,
     data TEXT
   );
-
-  -- Seed initial site content if empty
-  INSERT OR IGNORE INTO content (id, data) VALUES ('siteContent', '{"pages":[]}');
 `);
+
+// Seed initial site content dynamically from initialPages.json if empty or default
+try {
+  let initialPagesData = '{"pages":[]}';
+  const initialPagesPath = path.join(__dirname, 'initialPages.json');
+  if (fs.existsSync(initialPagesPath)) {
+    const rawData = fs.readFileSync(initialPagesPath, 'utf8');
+    // Validate we can parse it
+    const parsedData = JSON.parse(rawData);
+    initialPagesData = JSON.stringify({ pages: parsedData });
+    console.log('Loaded default siteContent seed from initialPages.json');
+  }
+
+  // Insert default row if not exists
+  const insertStmt = db.prepare('INSERT OR IGNORE INTO content (id, data) VALUES (?, ?)');
+  insertStmt.run('siteContent', initialPagesData);
+
+  // If already exists but has empty/minimal pages array (e.g. '{"pages":[]}'), migrate it to the rich initial pages layout
+  const currentContent = db.prepare('SELECT * FROM content WHERE id = ?').get('siteContent');
+  if (currentContent) {
+    try {
+      const parsedCurrent = JSON.parse(currentContent.data);
+      if (!parsedCurrent || !parsedCurrent.pages || parsedCurrent.pages.length === 0) {
+        const updateStmt = db.prepare('UPDATE content SET data = ? WHERE id = ?');
+        updateStmt.run(initialPagesData, 'siteContent');
+        console.log('Successfully seeded/migrated empty siteContent row on Hostinger to use preloaded initialPages!');
+      }
+    } catch (parseErr) {
+      // Repair if corrupted JSON
+      const updateStmt = db.prepare('UPDATE content SET data = ? WHERE id = ?');
+      updateStmt.run(initialPagesData, 'siteContent');
+      console.log('Repaired invalid siteContent database row with initialPages.json');
+    }
+  }
+} catch (seedErr) {
+  console.error('Error during site content database seeding/migration:', seedErr);
+}
 
 // Configure multer
 const storage = multer.diskStorage({
