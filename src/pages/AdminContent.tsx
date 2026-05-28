@@ -71,16 +71,7 @@ const uploadFile = async (file: File): Promise<string> => {
   
   let fileToUpload: File | Blob = file;
   
-  // Compress image before uploading to save bandwidth
-  if (file.type.startsWith('image/')) {
-    try {
-      const base64Str = await compressImage(file);
-      const res = await fetch(base64Str);
-      fileToUpload = await res.blob();
-    } catch (err) {
-      console.error('Compression failed, uploading original', err);
-    }
-  }
+  // High-resolution image compression bypass. We upload the original high-quality raw file as configured to the server storage.
 
   const formData = new FormData();
   formData.append('media', fileToUpload);
@@ -506,17 +497,25 @@ const AdminContent = () => {
     const fetchContent = async () => {
       try {
         const data = await api.getContent('siteContent');
-        if (data && data.pages) {
+        if (data && data.pages && data.pages.length > 0) {
           setPages(data.pages);
         } else {
           // Fallback to local storage if not in database yet
           const saved = localStorage.getItem('siteContent');
-          if (saved) setPages(JSON.parse(saved));
+          if (saved) {
+            setPages(JSON.parse(saved));
+          } else {
+            setPages(initialPages);
+          }
         }
       } catch (error) {
         // Fallback to local storage if offline or error
         const saved = localStorage.getItem('siteContent');
-        if (saved) setPages(JSON.parse(saved));
+        if (saved) {
+          setPages(JSON.parse(saved));
+        } else {
+          setPages(initialPages);
+        }
       }
     };
     fetchContent();
@@ -575,6 +574,115 @@ const AdminContent = () => {
     }));
   };
 
+  const handleAddPage = () => {
+    const name = window.prompt("Enter page name:");
+    if (!name || !name.trim()) return;
+    const slug = window.prompt("Enter page URL route slug (e.g. /custom-page):", `/${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')}`);
+    if (!slug || !slug.trim()) return;
+
+    const newPage: PageContent = {
+      id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'),
+      name: name.trim(),
+      slug: slug.trim(),
+      sections: []
+    };
+
+    setPages([...pages, newPage]);
+    setSelectedPageId(newPage.id);
+    setActiveSectionId(null);
+  };
+
+  const handleRenamePage = (pageId: string) => {
+    const page = pages.find(p => p.id === pageId);
+    if (!page) return;
+    const newName = window.prompt("Rename page name:", page.name);
+    if (!newName || !newName.trim()) return;
+    setPages(pages.map(p => p.id === pageId ? { ...p, name: newName.trim() } : p));
+  };
+
+  const handleDeletePage = (pageId: string) => {
+    const remainPages = pages.filter(p => p.id !== pageId);
+    setPages(remainPages);
+    if (selectedPageId === pageId) {
+      setSelectedPageId(remainPages[0].id);
+      setActiveSectionId(null);
+    }
+  };
+
+  const toggleSectionVisibility = (sectionId: string) => {
+    setPages(pages.map(page => {
+      if (page.id === selectedPageId) {
+        return {
+          ...page,
+          sections: page.sections.map(section => {
+            if (section.id === sectionId) {
+              return { ...section, isVisible: !section.isVisible };
+            }
+            return section;
+          })
+        };
+      }
+      return page;
+    }));
+  };
+
+  const deleteSection = (sectionId: string) => {
+    setPages(pages.map(page => {
+      if (page.id === selectedPageId) {
+        return {
+          ...page,
+          sections: page.sections.filter(section => section.id !== sectionId)
+        };
+      }
+      return page;
+    }));
+    if (activeSectionId === sectionId) {
+      setActiveSectionId(null);
+    }
+  };
+
+  const handleAddSection = () => {
+    const type = window.prompt("Enter section type ('hero', 'features', 'text', 'gallery', 'cta', 'split', 'quote', 'stats'):", 'text');
+    if (!type) return;
+    const normalizedType = type.trim().toLowerCase() as SectionType;
+    const validTypes: SectionType[] = ['hero', 'features', 'text', 'gallery', 'cta', 'split', 'quote', 'stats'];
+    if (!validTypes.includes(normalizedType)) {
+      alert(`Invalid type. Must be one of: ${validTypes.join(', ')}`);
+      return;
+    }
+    const title = window.prompt("Enter section title:", `New ${normalizedType.toUpperCase()} Section`);
+    if (!title || !title.trim()) return;
+
+    let defaultContent: any = {};
+    if (normalizedType === 'text') defaultContent = { text: 'New text section' };
+    else if (normalizedType === 'hero') defaultContent = { smallHeading: 'New season', heading: 'Headline title', subheading: 'Subheading text', buttonText: 'Shop', buttonLink: '/shop', items: [] };
+    else if (normalizedType === 'features') defaultContent = { items: [{ title: 'New Feature', link: '', description: '' }] };
+    else if (normalizedType === 'gallery') defaultContent = { images: [] };
+    else if (normalizedType === 'cta') defaultContent = { heading: 'Call to Action', subheading: 'Action description', buttonText: 'Button', buttonLink: '/' };
+    else if (normalizedType === 'split') defaultContent = { smallHeading: 'Split Section', heading: 'Split title', text1: 'Sample text 1', text2: 'Sample text 2', mediaItems: [] };
+    else if (normalizedType === 'quote') defaultContent = { text: 'Quote text', author: 'Author', role: 'Role' };
+    else if (normalizedType === 'stats') defaultContent = { heading: 'Stats heading', text1: 'Text 1', text2: 'Text 2', stats: [{ value: '100%', label: 'Label' }] };
+
+    const newSection: ContentSection = {
+      id: `${selectedPageId}-${normalizedType}-${Date.now()}`,
+      type: normalizedType,
+      title: title.trim(),
+      isVisible: true,
+      content: defaultContent
+    };
+
+    setPages(pages.map(page => {
+      if (page.id === selectedPageId) {
+        return {
+          ...page,
+          sections: [...page.sections, newSection]
+        };
+      }
+      return page;
+    }));
+    setActiveSectionId(newSection.id);
+  };
+
   const renderInput = (label: string, value: string, key: string, sectionId: string, type: 'text' | 'textarea' = 'text') => (
     <div className="mb-4">
       <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 capitalize">{label}</label>
@@ -616,7 +724,18 @@ const AdminContent = () => {
 
             {section.content.backgroundImage !== undefined && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Background Image URL</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Background Image URL</label>
+                  {section.content.backgroundImage && (
+                    <button
+                      type="button"
+                      onClick={() => updateSectionContent(section.id, { backgroundImage: '' })}
+                      className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
+                    >
+                      <Trash2 size={12} /> Clear Background
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
@@ -654,127 +773,74 @@ const AdminContent = () => {
                 )}
               </div>
             )}
-
             {section.content.items !== undefined && (
               <div className="mt-6 border-t pt-6">
-                <h4 className="font-medium text-gray-900 mb-4">Carousel Media Items</h4>
-              <div className="space-y-4">
-                {section.content.items?.map((item: any, index: number) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
-                    <button 
-                      onClick={() => {
-                        const newItems = section.content.items.filter((_: any, i: number) => i !== index);
-                        updateSectionContent(section.id, { items: newItems });
-                      }}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
-                        <select
-                          value={item.type}
-                          onChange={(e) => {
-                            const newItems = [...section.content.items];
-                            newItems[index] = { ...item, type: e.target.value };
-                            updateSectionContent(section.id, { items: newItems });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
-                        >
-                          <option value="image">Image</option>
-                          <option value="video">Video</option>
-                        </select>
-                      </div>
+                <h4 className="font-medium text-gray-900 mb-4 animate-fade-in">Carousel Media Items</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {section.content.items?.map((item: any, index: number) => (
+                    <div key={item.id || index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative flex flex-col justify-between shadow-sm">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newItems = section.content.items.filter((_: any, i: number) => i !== index);
+                          updateSectionContent(section.id, { items: newItems });
+                        }}
+                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow transition-all z-10 active:scale-90"
+                        title="Delete Item"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                       
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Source (URL or Upload)</label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            value={item.src}
+                      <div className="space-y-3 flex-1">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
+                          <select
+                            value={item.type || 'image'}
                             onChange={(e) => {
                               const newItems = [...section.content.items];
-                              newItems[index] = { ...item, src: e.target.value };
+                              newItems[index] = { ...item, type: e.target.value };
                               updateSectionContent(section.id, { items: newItems });
                             }}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
-                            placeholder={item.type === 'video' ? "Video URL" : "Image URL"}
-                          />
-                          <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-md border border-gray-300 flex items-center justify-center transition-colors" title="Upload from computer">
-                            <Upload size={16} />
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs outline-none bg-white font-medium"
+                          >
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Source (URL or Upload)</label>
+                          <div className="flex gap-2">
                             <input 
-                              type="file" 
-                              className="hidden" 
-                              accept={item.type === 'video' ? "video/*" : "image/*"}
+                              type="text" 
+                              value={item.src}
                               onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  // Check size (limit to 500MB for video to avoid browser crash)
-                                  if (file.size > 500 * 1024 * 1024) {
-                                    setSaveMessage("File too large (>500MB)");
-                                    setTimeout(() => setSaveMessage('Save Changes'), 3000);
-                                    return;
-                                  }
-                                  
-                                  if (file.type.startsWith('image/')) {
+                                const newItems = [...section.content.items];
+                                newItems[index] = { ...item, src: e.target.value };
+                                updateSectionContent(section.id, { items: newItems });
+                              }}
+                              className="flex-1 min-w-0 px-2.5 py-1.5 border border-gray-200 rounded-md text-[11px] font-mono outline-none bg-white focus:border-[#f20c92]"
+                              placeholder={item.type === 'video' ? "Video URL" : "Image URL"}
+                            />
+                            <label className="cursor-pointer bg-white hover:bg-gray-50 text-gray-600 px-2.5 py-1.5 rounded-md border border-gray-200 flex items-center justify-center transition-colors flex-shrink-0" title="Upload from computer">
+                              <Upload size={14} />
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept={item.type === 'video' ? "video/*" : "image/*"}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.size > 500 * 1024 * 1024) {
+                                      setSaveMessage("File too large (>500MB)");
+                                      setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                      return;
+                                    }
+                                    
                                     setSaveMessage("Uploading...");
                                     uploadFile(file).then((url) => {
                                       const newItems = [...section.content.items];
                                       newItems[index] = { ...item, src: url };
-                                      updateSectionContent(section.id, { items: newItems });
-                                      setSaveMessage("Uploaded!");
-                                      setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                                    }).catch((err: any) => {
-                                      setSaveMessage(err.message || "Upload Failed");
-                                      setTimeout(() => setSaveMessage('Save Changes'), 3000);
-                                    });
-                                  } else {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
-                                      const newItems = [...section.content.items];
-                                      newItems[index] = { ...item, src: reader.result as string };
-                                      updateSectionContent(section.id, { items: newItems });
-                                    };
-                                    reader.readAsDataURL(file);
-                                  }
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                        {item.type === 'video' && <p className="text-[10px] text-gray-400 mt-1">Supported formats: MP4, WebM. Max 500MB.</p>}
-                      </div>
-
-                      {item.type === 'video' && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Poster Image (URL or Upload)</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={item.poster}
-                              onChange={(e) => {
-                                const newItems = [...section.content.items];
-                                newItems[index] = { ...item, poster: e.target.value };
-                                updateSectionContent(section.id, { items: newItems });
-                              }}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
-                              placeholder="Poster Image URL"
-                            />
-                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-md border border-gray-300 flex items-center justify-center transition-colors" title="Upload poster">
-                              <Upload size={16} />
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    setSaveMessage("Uploading...");
-                                    uploadFile(file).then((url) => {
-                                      const newItems = [...section.content.items];
-                                      newItems[index] = { ...item, poster: url };
                                       updateSectionContent(section.id, { items: newItems });
                                       setSaveMessage("Uploaded!");
                                       setTimeout(() => setSaveMessage('Save Changes'), 2000);
@@ -788,48 +854,100 @@ const AdminContent = () => {
                             </label>
                           </div>
                         </div>
-                      )}
 
-                      {item.type === 'image' && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Alt Text</label>
-                          <input 
-                            type="text" 
-                            value={item.alt}
-                            onChange={(e) => {
-                              const newItems = [...section.content.items];
-                              newItems[index] = { ...item, alt: e.target.value };
-                              updateSectionContent(section.id, { items: newItems });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
-                          />
-                        </div>
-                      )}
+                        {item.type === 'video' && (
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Poster Image (URL or Upload)</label>
+                            <div className="flex gap-2">
+                              <input 
+                                type="text" 
+                                value={item.poster || ''}
+                                onChange={(e) => {
+                                  const newItems = [...section.content.items];
+                                  newItems[index] = { ...item, poster: e.target.value };
+                                  updateSectionContent(section.id, { items: newItems });
+                                }}
+                                className="flex-1 min-w-0 px-2.5 py-1.5 border border-gray-200 rounded-md text-[11px] font-mono outline-none bg-white focus:border-[#f20c92]"
+                                placeholder="Poster Image URL"
+                              />
+                              <label className="cursor-pointer bg-white hover:bg-gray-50 text-gray-600 px-2.5 py-1.5 rounded-md border border-gray-200 flex items-center justify-center transition-colors flex-shrink-0" title="Upload poster">
+                                <Upload size={14} />
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setSaveMessage("Uploading...");
+                                      uploadFile(file).then((url) => {
+                                        const newItems = [...section.content.items];
+                                        newItems[index] = { ...item, poster: url };
+                                        updateSectionContent(section.id, { items: newItems });
+                                        setSaveMessage("Uploaded!");
+                                        setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                      }).catch((err: any) => {
+                                        setSaveMessage(err.message || "Upload Failed");
+                                        setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                      });
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {item.type !== 'video' && (
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Alt Text</label>
+                            <input 
+                              type="text" 
+                              value={item.alt || ''}
+                              onChange={(e) => {
+                                const newItems = [...section.content.items];
+                                newItems[index] = { ...item, alt: e.target.value };
+                                updateSectionContent(section.id, { items: newItems });
+                              }}
+                              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-md text-xs outline-none bg-white"
+                              placeholder="Decorative alternative text"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Preview Box */}
+                      <div className="mt-4 h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200/60 relative flex-shrink-0 flex items-center justify-center">
+                        {item.src ? (
+                          item.type === 'video' ? (
+                            <div className="relative w-full h-full">
+                              <video src={item.src} className="w-full h-full object-cover" muted controls />
+                              <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase font-mono">Video</span>
+                            </div>
+                          ) : (
+                            <img src={item.src} alt={item.alt} className="w-full h-full object-cover" />
+                          )
+                        ) : (
+                          <div className="text-gray-400 text-[11px] font-medium italic">No media preview</div>
+                        )}
+                      </div>
                     </div>
-                    
-                    {/* Preview */}
-                    <div className="mt-3 h-32 bg-gray-200 rounded overflow-hidden">
-                       {item.type === 'video' ? (
-                         <video src={item.src} className="w-full h-full object-cover" muted />
-                       ) : (
-                         <img src={item.src} alt={item.alt} className="w-full h-full object-cover" />
-                       )}
-                    </div>
-                  </div>
-                ))}
-                
-                <button 
-                  onClick={() => {
-                    const newItems = [...(section.content.items || []), { id: Date.now(), type: 'image', src: '' }];
-                    updateSectionContent(section.id, { items: newItems });
-                  }}
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus size={16} />
-                  Add Media Item
-                </button>
+                  ))}
+                  
+                  {/* Big Add Button */}
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const newItems = [...(section.content.items || []), { id: Date.now(), type: 'image', src: '', alt: '' }];
+                      updateSectionContent(section.id, { items: newItems });
+                    }}
+                    className="h-full min-h-[220px] py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer duration-200 hover:shadow-sm"
+                  >
+                    <Plus size={24} />
+                    <span className="text-xs font-bold uppercase tracking-wider">Add Media Item</span>
+                  </button>
+                </div>
               </div>
-            </div>
             )}
           </div>
         );
@@ -838,51 +956,83 @@ const AdminContent = () => {
         return (
           <div className="space-y-4">
             {Object.keys(section.content).map((key) => {
-              if (key === 'listItems' || key.toLowerCase().includes('image')) return null;
+              if (key === 'listItems' || key.toLowerCase().includes('image') || key.toLowerCase().includes('video')) return null;
               const isTextArea = ['text', 'description', 'subheading', 'quote', 'message'].some(term => key.toLowerCase().includes(term));
               return renderInput(key.replace(/([A-Z])/g, ' $1').trim(), section.content[key], key, section.id, isTextArea ? 'textarea' : 'text');
             })}
             
-            {Object.keys(section.content).filter(key => key.toLowerCase().includes('image')).map(key => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={section.content[key]}
-                    onChange={(e) => updateSectionContent(section.id, { [key]: e.target.value })}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f20c92] focus:border-transparent outline-none"
-                  />
-                  <label className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center">
-                    <Upload size={20} />
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setSaveMessage("Uploading...");
-                          uploadFile(file).then((url) => {
-                            updateSectionContent(section.id, { [key]: url });
-                            setSaveMessage("Uploaded!");
-                            setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                          }).catch((err: any) => {
-                            setSaveMessage(err.message || "Upload Failed");
-                            setTimeout(() => setSaveMessage('Save Changes'), 3000);
-                          });
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-                {section.content[key] && (
-                  <div className="mt-2 relative h-40 w-full rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200">
-                    <img src={section.content[key]} alt="Preview" className="max-w-full max-h-full object-contain" />
+            {Object.keys(section.content).filter(key => key.toLowerCase().includes('image') || key.toLowerCase().includes('video')).map(key => {
+              const value = section.content[key];
+              const isValueVideo = value && (value.endsWith('.mp4') || value.endsWith('.webm') || value.includes('video') || value.includes('coverr.co'));
+              return (
+                <div key={key} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 space-y-3 shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-bold text-gray-700 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                    {value && (
+                      <button 
+                        type="button"
+                        onClick={() => updateSectionContent(section.id, { [key]: '' })}
+                        className="text-[10px] text-red-500 hover:text-red-700 flex items-center gap-1 font-bold bg-white px-2 py-1 rounded shadow-sm border border-red-100 active:scale-95 transition-all"
+                      >
+                        <Trash2 size={11} /> Clear Media
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={value || ''}
+                      onChange={(e) => updateSectionContent(section.id, { [key]: e.target.value })}
+                      className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg bg-white focus:ring-1 focus:ring-[#f20c92] outline-none text-xs font-mono"
+                      placeholder="Image or Video URL"
+                    />
+                    <label className="cursor-pointer px-3 py-1.5 bg-white text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center flex-shrink-0" title="Upload media">
+                      <Upload size={14} />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 500 * 1024 * 1024) {
+                              setSaveMessage("File too large (>500MB)");
+                              setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                              return;
+                            }
+                            setSaveMessage("Uploading...");
+                            uploadFile(file).then((url) => {
+                              updateSectionContent(section.id, { [key]: url });
+                              setSaveMessage("Uploaded!");
+                              setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                            }).catch((err: any) => {
+                              setSaveMessage(err.message || "Upload Failed");
+                              setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                            });
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {value && (
+                    <div className="mt-2 relative h-40 w-full rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200/60 shadow-inner">
+                      {isValueVideo ? (
+                        <div className="relative w-full h-full flex items-center justify-center">
+                          <video src={value} className="max-w-full max-h-full object-contain" muted controls />
+                          <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase font-mono">Video</span>
+                        </div>
+                      ) : (
+                        <img src={value} alt="Preview" className="max-w-full max-h-full object-contain" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
 
@@ -900,16 +1050,16 @@ const AdminContent = () => {
              {/* Media Items Carousel */}
              <div className="mt-6 border-t pt-6">
                <h4 className="font-medium text-gray-900 mb-4">Carousel Media Items</h4>
-               <div className="space-y-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  {(section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : [])).map((item: any, index: number) => (
-                   <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                   <div key={item.id || index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative flex flex-col justify-between shadow-sm">
                      <button 
                        onClick={() => {
                          const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
                          const newItems = currentItems.filter((_: any, i: number) => i !== index);
                          updateSectionContent(section.id, { mediaItems: newItems, image: null });
                        }}
-                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow transition-all z-10 active:scale-95"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -984,9 +1134,10 @@ const AdminContent = () => {
                                 type="text" 
                                 value={item.poster || ''}
                                 onChange={(e) => {
-                                  const newItems = [...section.content.mediaItems];
+                                  const currentItems = section.content.mediaItems || (section.content.image ? [{ id: 1, type: 'image', src: section.content.image, alt: 'Image' }] : []);
+                                  const newItems = [...currentItems];
                                   newItems[index] = { ...item, poster: e.target.value };
-                                  updateSectionContent(section.id, { mediaItems: newItems });
+                                  updateSectionContent(section.id, { mediaItems: newItems, image: null });
                                 }}
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
                                 placeholder="Poster Image URL"
@@ -1139,8 +1290,20 @@ const AdminContent = () => {
             {renderInput('Side Text', section.content.sideText, 'sideText', section.id, 'textarea')}
 
             {section.content.items.map((item: any, index: number) => (
-              <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h4 className="text-sm font-bold text-gray-900 mb-3">Item {index + 1}</h4>
+              <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-bold text-gray-900">Item {index + 1}</h4>
+                  <button 
+                    onClick={() => {
+                      const newItems = section.content.items.filter((_: any, i: number) => i !== index);
+                      updateSectionContent(section.id, { items: newItems });
+                    }}
+                    className="p-1 hover:text-red-500 rounded text-gray-400 hover:bg-red-50 transition-colors"
+                    title="Delete Item"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
@@ -1170,47 +1333,94 @@ const AdminContent = () => {
                     </div>
                   )}
                   {item.image !== undefined && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Image URL</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={item.image}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Media Type</label>
+                        <select
+                          value={item.mediaType || 'image'}
                           onChange={(e) => {
                             const newItems = [...section.content.items];
-                            newItems[index] = { ...item, image: e.target.value };
+                            newItems[index] = { ...item, mediaType: e.target.value };
                             updateSectionContent(section.id, { items: newItems });
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-[#f20c92] outline-none"
-                        />
-                        <label className="cursor-pointer px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center">
-                          <Upload size={16} />
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setSaveMessage("Uploading...");
-                                uploadFile(file).then((url) => {
-                                  const newItems = [...section.content.items];
-                                  newItems[index] = { ...item, image: url };
-                                  updateSectionContent(section.id, { items: newItems });
-                                  setSaveMessage("Uploaded!");
-                                  setTimeout(() => setSaveMessage('Save Changes'), 2000);
-                                }).catch((err: any) => {
-                                  setSaveMessage(err.message || "Upload Failed");
-                                  setTimeout(() => setSaveMessage('Save Changes'), 3000);
-                                });
-                              }
-                            }}
-                          />
-                        </label>
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs outline-none bg-white font-medium"
+                        >
+                          <option value="image">Image</option>
+                          <option value="video">Video</option>
+                        </select>
                       </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-semibold text-gray-500">Media Source (URL or Upload)</label>
+                          {item.image && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = [...section.content.items];
+                                newItems[index] = { ...item, image: '' };
+                                updateSectionContent(section.id, { items: newItems });
+                              }}
+                              className="text-[10px] text-red-500 hover:text-red-700 font-bold flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-red-100 shadow-sm active:scale-95 transition-all"
+                            >
+                              <Trash2 size={10} /> Clear Media
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={item.image}
+                            onChange={(e) => {
+                              const newItems = [...section.content.items];
+                              newItems[index] = { ...item, image: e.target.value };
+                              updateSectionContent(section.id, { items: newItems });
+                            }}
+                            className="flex-1 min-w-0 px-2.5 py-1.5 border border-gray-200 rounded-md text-[11px] font-mono outline-none bg-white focus:border-[#f20c92]"
+                            placeholder={item.mediaType === 'video' ? "Video URL" : "Image URL"}
+                          />
+                          <label className="cursor-pointer bg-white hover:bg-gray-50 text-gray-600 px-2.5 py-1.5 rounded-md border border-gray-200 flex items-center justify-center transition-colors flex-shrink-0" title="Upload media">
+                            <Upload size={14} />
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept={item.mediaType === 'video' ? "video/*" : "image/*"}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 500 * 1024 * 1024) {
+                                    setSaveMessage("File too large (>500MB)");
+                                    setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                    return;
+                                  }
+                                  setSaveMessage("Uploading...");
+                                  uploadFile(file).then((url) => {
+                                    const newItems = [...section.content.items];
+                                    newItems[index] = { ...item, image: url };
+                                    updateSectionContent(section.id, { items: newItems });
+                                    setSaveMessage("Uploaded!");
+                                    setTimeout(() => setSaveMessage('Save Changes'), 2000);
+                                  }).catch((err: any) => {
+                                    setSaveMessage(err.message || "Upload Failed");
+                                    setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       {item.image && (
-                        <div className="mt-2 relative h-24 w-full rounded-md overflow-hidden bg-gray-100">
-                          <img src={item.image} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="mt-2 h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200/60 relative flex items-center justify-center">
+                          {item.mediaType === 'video' ? (
+                            <div className="relative w-full h-full">
+                              <video src={item.image} className="w-full h-full object-cover" muted controls />
+                              <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase font-mono">Video</span>
+                            </div>
+                          ) : (
+                            <img src={item.image} alt="Preview" className="w-full h-full object-cover" />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1248,7 +1458,24 @@ const AdminContent = () => {
                 </div>
               </div>
             ))}
-            <button className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] transition-colors flex items-center justify-center gap-2">
+            <button 
+              onClick={() => {
+                const draftItem: any = { title: 'New Item' };
+                if (section.content.items?.[0]) {
+                  const sample = section.content.items[0];
+                  if (sample.description !== undefined) draftItem.description = '';
+                  if (sample.image !== undefined) draftItem.image = '';
+                  if (sample.link !== undefined) draftItem.link = '';
+                  if (sample.icon !== undefined) draftItem.icon = '';
+                } else {
+                  draftItem.description = '';
+                  draftItem.link = '';
+                }
+                const newItems = [...(section.content.items || []), draftItem];
+                updateSectionContent(section.id, { items: newItems });
+              }}
+              className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] transition-colors flex items-center justify-center gap-2"
+            >
               <Plus size={16} />
               Add Item
             </button>
@@ -1258,31 +1485,51 @@ const AdminContent = () => {
       case 'gallery':
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {section.content.images?.map((img: string, index: number) => (
-                <div key={index} className="relative group">
-                  <img src={img} alt={`Gallery ${index}`} className="w-full h-32 object-cover rounded-lg" />
-                  <button 
-                    onClick={() => {
-                      const newImages = section.content.images.filter((_: any, i: number) => i !== index);
-                      updateSectionContent(section.id, { images: newImages });
-                    }}
-                    className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-              <label className="cursor-pointer h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-colors">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {section.content.images?.map((img: string, index: number) => {
+                const isVideo = img.endsWith('.mp4') || img.endsWith('.webm') || img.endsWith('.mov') || img.includes('video') || img.includes('cdn.coverr.co');
+                return (
+                  <div key={index} className="relative group rounded-lg overflow-hidden border border-gray-200">
+                    {isVideo ? (
+                      <div className="relative w-full h-32 bg-black">
+                        <video src={img} className="w-full h-full object-cover" muted />
+                        <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded uppercase font-mono">Video</span>
+                      </div>
+                    ) : (
+                      <img src={img} alt={`Gallery ${index}`} className="w-full h-32 object-cover" />
+                    )}
+                    
+                    {/* Delete button always responsive/visible or on hover */}
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const newImages = section.content.images.filter((_: any, i: number) => i !== index);
+                        updateSectionContent(section.id, { images: newImages });
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-white/95 rounded-full shadow-md text-gray-500 hover:text-red-500 transition-all active:scale-95 hover:bg-red-50"
+                      title="Delete media"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+              
+              <label className="cursor-pointer h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all duration-250">
                 <Plus size={24} />
-                <span className="text-xs mt-1">Add Image</span>
+                <span className="text-xs font-bold uppercase tracking-wider mt-1.5">Add Media</span>
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept="image/*"
+                  accept="image/*,video/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      if (file.size > 500 * 1024 * 1024) {
+                        setSaveMessage("File too large (>500MB)");
+                        setTimeout(() => setSaveMessage('Save Changes'), 3000);
+                        return;
+                      }
                       setSaveMessage("Uploading...");
                       uploadFile(file).then((url) => {
                         const newImages = [...(section.content.images || []), url];
@@ -1361,23 +1608,56 @@ const AdminContent = () => {
             <div className="p-3 md:p-4 flex md:flex-col gap-2 md:gap-1">
               <h3 className="hidden md:block text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Pages</h3>
               {pages.map(page => (
-                <button
+                <div
                   key={page.id}
-                  onClick={() => {
-                    setSelectedPageId(page.id);
-                    setActiveSectionId(null);
-                  }}
-                  className={`whitespace-nowrap md:whitespace-normal text-left px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex-shrink-0 md:flex-shrink ${
+                  className={`flex items-center justify-between w-full rounded-lg text-xs md:text-sm font-medium transition-colors group relative ${
                     selectedPageId === page.id 
                       ? 'bg-[#f20c92]/10 text-[#f20c92]' 
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  {page.name}
-                </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPageId(page.id);
+                      setActiveSectionId(null);
+                    }}
+                    className="flex-1 text-left px-4 py-2 truncate"
+                  >
+                    {page.name}
+                  </button>
+                  <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRenamePage(page.id);
+                      }}
+                      className="p-1 hover:text-[#f20c92] hover:bg-white/50 rounded transition-colors"
+                      title="Rename Page"
+                    >
+                      <Type size={14} />
+                    </button>
+                    {pages.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete the "${page.name}" page?`)) {
+                            handleDeletePage(page.id);
+                          }
+                        }}
+                        className="p-1 hover:text-red-500 hover:bg-white/50 rounded transition-colors"
+                        title="Delete Page"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               ))}
               
-              <button className="whitespace-nowrap md:whitespace-normal mt-0 md:mt-4 flex items-center gap-2 px-4 py-2 text-xs md:text-sm text-gray-500 hover:text-[#f20c92] transition-colors flex-shrink-0 md:flex-shrink">
+              <button 
+                onClick={handleAddPage}
+                className="whitespace-nowrap md:whitespace-normal mt-0 md:mt-4 flex items-center gap-2 px-4 py-2 text-xs md:text-sm text-gray-500 hover:text-[#f20c92] transition-colors flex-shrink-0 md:flex-shrink"
+              >
                 <Plus size={16} />
                 <span className="hidden md:inline">Add New Page</span>
                 <span className="md:hidden">New</span>
@@ -1419,11 +1699,35 @@ const AdminContent = () => {
                         </div>
                         <span className="font-medium text-gray-900 text-sm md:text-base truncate">{section.title}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${section.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggleSectionVisibility(section.id)}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${
+                            section.isVisible ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
+                          title="Toggle Visibility"
+                        >
                           {section.isVisible ? 'Visible' : 'Hidden'}
-                        </span>
-                        <ChevronRight size={16} className={`text-gray-400 transition-transform md:w-[18px] md:h-[18px] ${activeSectionId === section.id ? 'rotate-90' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to delete this section?")) {
+                              deleteSection(section.id);
+                            }
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                          title="Delete Section"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <ChevronRight 
+                          size={16} 
+                          className={`text-gray-400 transition-transform md:w-[18px] md:h-[18px] cursor-pointer ${activeSectionId === section.id ? 'rotate-90' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveSectionId(activeSectionId === section.id ? null : section.id);
+                          }}
+                        />
                       </div>
                     </div>
                     
@@ -1435,7 +1739,10 @@ const AdminContent = () => {
                   </div>
                 ))}
 
-                <button className="w-full py-3 md:py-4 border-2 border-dashed border-gray-300 rounded-lg md:rounded-xl text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all flex items-center justify-center gap-2 group">
+                <button 
+                  onClick={handleAddSection}
+                  className="w-full py-3 md:py-4 border-2 border-dashed border-gray-300 rounded-lg md:rounded-xl text-gray-500 hover:border-[#f20c92] hover:text-[#f20c92] hover:bg-[#f20c92]/5 transition-all flex items-center justify-center gap-2 group"
+                >
                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gray-100 group-hover:bg-[#f20c92]/10 flex items-center justify-center transition-colors">
                     <Plus size={16} className="md:w-[18px] md:h-[18px]" />
                   </div>

@@ -43,7 +43,7 @@ export function Hero() {
         const data = await api.getContent('siteContent');
         
         let parsed = null;
-        if (data && data.pages) {
+        if (data && data.pages && data.pages.length > 0) {
           parsed = data.pages;
         } else {
           const savedContent = localStorage.getItem('siteContent');
@@ -55,7 +55,7 @@ export function Hero() {
           const homePage = parsed.find((p: any) => p.id === 'home');
           const heroSection = homePage?.sections.find((s: any) => s.id === 'home-hero');
           if (heroSection?.content) {
-            if (heroSection.content.items && heroSection.content.items.length > 0) {
+            if (heroSection.content.items !== undefined) {
               setItems(heroSection.content.items);
             } else {
               setItems(HERO_ITEMS);

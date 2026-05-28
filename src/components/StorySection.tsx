@@ -22,7 +22,7 @@ export function StorySection() {
         const data = await api.getContent('siteContent');
         
         let parsed = null;
-        if (data && data.pages) {
+        if (data && data.pages && data.pages.length > 0) {
           parsed = data.pages;
         } else {
           const savedContent = localStorage.getItem('siteContent');

@@ -12,6 +12,13 @@ export function MediaCarousel({ items, interval = 5000, className = '' }: MediaC
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    // If current index is out of bounds, reset to 0
+    if (currentIndex >= items.length) {
+      setCurrentIndex(0);
+    }
+  }, [items?.length, currentIndex]);
+
+  useEffect(() => {
     if (!items || items.length <= 1) return;
 
     const timer = setInterval(() => {
@@ -23,7 +30,10 @@ export function MediaCarousel({ items, interval = 5000, className = '' }: MediaC
 
   if (!items || items.length === 0) return null;
 
-  const currentItem = items[currentIndex];
+  const safeIndex = currentIndex < items.length ? currentIndex : 0;
+  const currentItem = items[safeIndex];
+
+  if (!currentItem) return null;
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
@@ -38,8 +48,8 @@ export function MediaCarousel({ items, interval = 5000, className = '' }: MediaC
         >
           {currentItem.type === 'video' ? (
             <video
-              src={currentItem.src}
-              poster={currentItem.poster}
+              src={currentItem.src || undefined}
+              poster={currentItem.poster || undefined}
               autoPlay
               muted
               loop
@@ -48,7 +58,7 @@ export function MediaCarousel({ items, interval = 5000, className = '' }: MediaC
             />
           ) : (
             <img
-              src={currentItem.src}
+              src={currentItem.src || undefined}
               alt={currentItem.alt || 'Media content'}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"

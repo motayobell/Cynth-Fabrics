@@ -76,7 +76,7 @@ export default function AdminLogin() {
           // In a real app, we'd verify password on server. 
           // For now, we'll check if it matches the stored password (if any)
           // or allow the default admin
-          if (foundUser.password === password || (email === 'admin@cynthfabrics.com' && password === 'admin123')) {
+          if (foundUser.password === password || (email === 'admin@cynthfabrics.com' && password === 'Admin@123')) {
             const user = {
               ...foundUser,
               lastLogin: new Date().toISOString()
@@ -87,7 +87,7 @@ export default function AdminLogin() {
             navigate('/admin/dashboard');
             return;
           }
-        } else if (email === 'admin@cynthfabrics.com' && password === 'admin123') {
+        } else if (email === 'admin@cynthfabrics.com' && password === 'Admin@123') {
            // Default fallback
            const user = {
             id: 'default-admin',

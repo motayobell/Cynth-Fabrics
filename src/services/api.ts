@@ -43,7 +43,10 @@ export const api = {
     const res = await fetch(`${API_BASE}/content/${id}?t=${Date.now()}`, {
       headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
     });
-    if (!res.ok) throw new Error('Content not found');
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error('Content not found');
+    }
     return res.json();
   },
   async updateContent(id: string, data: any) {
@@ -108,7 +111,10 @@ export const api = {
     const res = await fetch(`${API_BASE}/settings/${id}?t=${Date.now()}`, {
       headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
     });
-    if (!res.ok) throw new Error('Settings not found');
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error('Settings not found');
+    }
     return res.json();
   },
   async updateSettings(id: string, data: any) {

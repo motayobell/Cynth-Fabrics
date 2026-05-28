@@ -344,6 +344,15 @@ async function startServer() {
     setTimeout(() => res.json({ success: true }), 1000);
   });
 
+  // Serve uploads ALWAYS (both dev and prod environments)
+  app.use('/uploads', express.static(uploadsDir, {
+    setHeaders: (res) => {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+    }
+  }));
+
   // Vite/Static serving
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
@@ -352,11 +361,6 @@ async function startServer() {
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.use(express.static(publicDir));
-    app.use('/uploads', express.static(uploadsDir, {
-      setHeaders: (res) => {
-        res.set('Cache-Control', 'no-cache, must-revalidate');
-      }
-    }));
     app.get('*', (req, res) => {
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));

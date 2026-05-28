@@ -18,6 +18,13 @@ export function HeroCarousel({ items, interval = 5000 }: HeroCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    // If current index is out of bounds, reset to 0
+    if (currentIndex >= items.length) {
+      setCurrentIndex(0);
+    }
+  }, [items?.length, currentIndex]);
+
+  useEffect(() => {
     if (items.length <= 1) return;
 
     const timer = setInterval(() => {
@@ -27,7 +34,24 @@ export function HeroCarousel({ items, interval = 5000 }: HeroCarouselProps) {
     return () => clearInterval(timer);
   }, [items.length, interval]);
 
-  const currentItem = items[currentIndex];
+  if (!items || items.length === 0) {
+    return (
+      <div className="absolute inset-0 z-0 bg-black">
+        <div className="absolute inset-0 bg-black/40 z-10" />
+      </div>
+    );
+  }
+
+  const safeIndex = currentIndex < items.length ? currentIndex : 0;
+  const currentItem = items[safeIndex];
+
+  if (!currentItem) {
+    return (
+      <div className="absolute inset-0 z-0 bg-black">
+        <div className="absolute inset-0 bg-black/40 z-10" />
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden bg-black">
@@ -44,8 +68,8 @@ export function HeroCarousel({ items, interval = 5000 }: HeroCarouselProps) {
           
           {currentItem.type === 'video' ? (
             <video
-              src={currentItem.src}
-              poster={currentItem.poster}
+              src={currentItem.src || undefined}
+              poster={currentItem.poster || undefined}
               autoPlay
               muted
               loop
@@ -54,7 +78,7 @@ export function HeroCarousel({ items, interval = 5000 }: HeroCarouselProps) {
             />
           ) : (
             <img
-              src={currentItem.src}
+              src={currentItem.src || undefined}
               alt={currentItem.alt || 'Hero background'}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
