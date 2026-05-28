@@ -1487,6 +1487,7 @@ const AdminContent = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {section.content.images?.map((img: string, index: number) => {
+                if (!img) return null;
                 const isVideo = img.endsWith('.mp4') || img.endsWith('.webm') || img.endsWith('.mov') || img.includes('video') || img.includes('cdn.coverr.co');
                 return (
                   <div key={index} className="relative group rounded-lg overflow-hidden border border-gray-200">

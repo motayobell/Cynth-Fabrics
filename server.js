@@ -4,13 +4,28 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import multer from 'multer';
 import Database from 'better-sqlite3';
+import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Configure persistent storage paths
 // On Hostinger, you can set DATA_DIR to a folder outside your git repo (e.g., /home/u12345/cynth_data)
 // This ensures your uploads and database are NOT deleted when you push new updates.
-const DATA_DIR = process.env.DATA_DIR || __dirname;
+let DATA_DIR = process.env.DATA_DIR;
+if (!DATA_DIR) {
+  try {
+    const home = os.homedir();
+    // Hostinger custom/cPanel system directories start with /home/uXXXXXXX
+    if (home && (home.startsWith('/home/u') || home.includes('/home/')) && fs.existsSync(home)) {
+      DATA_DIR = path.join(home, 'cynth_data');
+    } else {
+      DATA_DIR = __dirname;
+    }
+  } catch (err) {
+    DATA_DIR = __dirname;
+  }
+}
+
 const uploadsDir = path.join(DATA_DIR, 'uploads');
 const publicDir = path.join(DATA_DIR, 'public');
 const dbPath = path.join(DATA_DIR, 'database.sqlite');
@@ -254,7 +269,7 @@ async function startServer() {
 
   // Users API
   app.get('/api/users', (req, res) => {
-    const users = db.prepare('SELECT id, name, email, role, avatar, status, lastLogin FROM users').all();
+    const users = db.prepare('SELECT id, name, email, role, avatar, status, lastLogin, password FROM users').all();
     res.json(users);
   });
 
